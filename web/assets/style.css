@@ -287,11 +287,16 @@ h1 {
     margin-bottom: 1.75rem;
 }
 
-.download .prose,
+.download .prose {
+    text-align: left;
+    max-width: 42rem;
+    margin: 2.5rem auto 0;
+}
+
+/* Centred under their headings; fit-content (above) sets the width */
 .download > .code-block,
 .build-locally .code-block {
     text-align: left;
-    max-width: 42rem;
     margin: 2.5rem auto 0;
 }
 
@@ -407,15 +412,20 @@ kbd {
 
 /* Code blocks */
 
+/* As wide as the command (plus the Copy button's room), never wider than the column,
+   so a long one still wraps on a phone */
 .code-block {
     position: relative;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .code-block pre {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 1rem 3.5rem 1rem 1.25rem;
+    /* The right side leaves room for the Copy button, which sits over it */
+    padding: 1rem 5.25rem 1rem 1.25rem;
     overflow-x: auto;
 }
 

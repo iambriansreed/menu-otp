@@ -88,6 +88,10 @@ git config core.hooksPath .scripts/hooks  # once per clone: Conventional Commit 
   (whose per-triple builds share one output directory) and two `--triple` builds +
   `lipo` under the CLT (which can't do multi-arch). Xcode's build system warns that
   x86_64 is deprecated "for macOS 27.0"; that's harmless, and the binary's `minos` is 14.0.
+- `bundle.sh debug` links with `-platform_version macos 14.0 <SDK version>`: plain
+  `swift build` otherwise stamps the SDK as 14.0, and macOS picks the look by that stamp,
+  so a debug build showed the pre-26 control style while releases (Xcode's build system,
+  real SDK) show Liquid Glass. The app uses Liquid Glass; debug builds must match it.
 - `app/scripts/demo.sh` execs the binary inside the bundle directly (not `open`), so
   `MENU_OTP_DEMO_FILE` and the arguments reach it.
 - When running the app from an agent, wrap it in a timeout
@@ -178,6 +182,9 @@ Every section's content sits in the same card (`.settingsCard()`), spaced by
 keyboard focus or with VoiceOver on; otherwise their icons are drawn `.clear`, keeping
 their space. Not `opacity(0)`: SwiftUI drops zero-opacity views from the accessibility
 tree, which hid the buttons from Voice Control, Switch Control and `a11y-test.sh`. The Manual form and the edit panel share `AccountFieldsGrid` (a label column).
+Add Account's From URL / Manual / Import File tabs are `FullWidthSegmentedControl` (an
+NSSegmentedControl with `.fillEqually`), not a SwiftUI segmented `Picker`: whether the
+Picker stretches depends on the SDK, so local builds stretched it and CI's didn't.
 
 Settings opens with no text field focused (`SettingsWindowController` clears the
 first responder AppKit assigns), Edit focuses the Issuer field, and Import's file

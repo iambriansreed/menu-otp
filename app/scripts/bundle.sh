@@ -43,7 +43,17 @@ case "$CONFIG" in
         esac
         ;;
     debug)
-        swift build -c debug
+        # Plain `swift build` stamps the binary's SDK version as its minimum (14.0),
+        # where a release build (Xcode's build system) stamps the real SDK. macOS picks
+        # a lot of look and behaviour by that stamp, the macOS 26 control style for
+        # one, so a debug build would not look like what users get. Stamp it properly:
+        # minimum 14.0, as in Package.swift, and the SDK actually used.
+        SDK_VERSION="$(xcrun --show-sdk-version 2>/dev/null || true)"
+        if [ -n "$SDK_VERSION" ]; then
+            swift build -c debug -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
+        else
+            swift build -c debug
+        fi
         BIN="$(swift build -c debug --show-bin-path)/MenuOTP"
         ;;
     *)

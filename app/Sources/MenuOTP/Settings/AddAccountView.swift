@@ -38,14 +38,12 @@ struct AddAccountView: View {
     var body: some View {
         @Bindable var fields = fields
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Add from", selection: $tab) {
-                Text("From URL").tag(Tab.url)
-                Text("Manual").tag(Tab.manual)
-                Text("Import File").tag(Tab.importFile)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            // Across the whole card, like the form below it
+            // Across the whole card, like the form below it, under any SDK
+            FullWidthSegmentedControl(
+                label: "Add from",
+                options: [("From URL", Tab.url), ("Manual", Tab.manual), ("Import File", Tab.importFile)],
+                selection: $tab
+            )
             .frame(maxWidth: .infinity)
             .onChange(of: tab) {
                 // Messages belong to the tab that produced them

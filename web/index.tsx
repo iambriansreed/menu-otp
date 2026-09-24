@@ -239,8 +239,8 @@ export function Page(): Skrapa.Page {
                             class="screenshot"
                             src="screenshot-edit.png"
                             alt="An account open for editing: labelled issuer, account, masked secret and icon fields, with Cancel and Save"
-                            width="434"
-                            height="156"
+                            width="431"
+                            height="163"
                             loading="lazy"
                             decoding="async"
                         />
@@ -279,7 +279,7 @@ export function Page(): Skrapa.Page {
                             src="screenshot-general.png"
                             alt="The General section of Settings: an Open at login checkbox and an Export Accounts button"
                             width="460"
-                            height="73"
+                            height="80"
                             loading="lazy"
                             decoding="async"
                         />
@@ -327,7 +327,7 @@ export function Page(): Skrapa.Page {
                         src="screenshot-settings.png"
                         alt="The Menu OTP Settings window: accounts with icons, one marked Hidden, then the Add Account form, then General with Open at login and Export Accounts"
                         width="480"
-                        height="776"
+                        height="794"
                         loading="lazy"
                         decoding="async"
                     />

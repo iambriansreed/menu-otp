@@ -29,6 +29,13 @@ struct AccountRowView: View {
     }
 
     private var actionColor: Color { showsActions ? .secondary : .clear }
+
+    private var hiddenBadge: some View {
+        Text("HIDDEN")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .fixedSize()
+    }
     @State private var fields = AccountFields()
     @State private var iconEditor: IconEditorModel?
     @State private var error = ""
@@ -56,11 +63,9 @@ struct AccountRowView: View {
                 .truncationMode(.tail)
                 .opacity(account.hidden ? 0.55 : 1)
             Spacer(minLength: 4)
-            if account.hidden {
-                Text("HIDDEN")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
+            // Right-aligned while the buttons are hidden (drawn over their space, below),
+            // then beside them once they appear
+            if account.hidden, showsActions { hiddenBadge }
             // Only while the row is pointed at or one of its buttons has keyboard focus,
             // as in Finder and System Settings lists, so the list reads as names rather
             // than a column of buttons. Always shown to VoiceOver users. They keep their
@@ -100,6 +105,9 @@ struct AccountRowView: View {
                 .focused($focusedAction, equals: .delete)
             }
             .foregroundStyle(actionColor)
+            .overlay(alignment: .trailing) {
+                if account.hidden, !showsActions { hiddenBadge }
+            }
         }
         .buttonStyle(.borderless)
         .padding(.vertical, 7)
