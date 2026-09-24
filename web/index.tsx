@@ -7,7 +7,11 @@ import { SiteFooter } from './components/site-footer';
 import { version } from './version.json';
 
 const RELEASE_URL = `${REPO_URL}/releases/latest`;
-const BUILD_COMMAND = `git clone ${REPO_URL}.git && cd menu-otp && app/scripts/make-dmg.sh`;
+/** web/assets/install.sh, which the site serves at its root */
+const INSTALL_COMMAND = 'sh <(curl -fsSL https://otp.iambrian.com/install.sh)';
+/** The same script's source on GitHub, with history, for anyone reading before running */
+const INSTALL_SCRIPT_URL = `${REPO_URL}/blob/main/web/assets/install.sh`;
+const BUILD_COMMAND =`git clone ${REPO_URL}.git && cd menu-otp && app/scripts/make-dmg.sh`;
 
 export function Page(): Skrapa.Page {
     return (
@@ -69,7 +73,28 @@ export function Page(): Skrapa.Page {
                         height="20"
                     />
                 </div>
+                <p class="lede install-lede">
+                    Or install from Terminal in one step. It downloads the latest release, checks it,
+                    moves it to Applications, clears the quarantine flag, and opens it:
+                </p>
+                <div class="code-block">
+                    <pre>
+                        <code>{INSTALL_COMMAND}</code>
+                    </pre>
+                    <button class="copy-btn" type="button">
+                        Copy
+                    </button>
+                </div>
+                <p class="sub">
+                    Read{' '}
+                    <a href={INSTALL_SCRIPT_URL} target="_blank" rel="noopener">
+                        the script
+                    </a>{' '}
+                    first if you like; it's short. Run it
+                    again any time to update.
+                </p>
                 <div class="prose">
+                    <p>To install by hand instead:</p>
                     <ol>
                         <li>
                             Open the downloaded <code>.dmg</code> and drag Menu OTP into Applications.
@@ -79,12 +104,7 @@ export function Page(): Skrapa.Page {
                             these approaches:
                             <ul>
                                 <li>
-                                    <strong>Right-click method:</strong> In Applications, right-click Menu
-                                    OTP, choose <strong>Open</strong>, then click <strong>Open</strong> in
-                                    the dialog.
-                                </li>
-                                <li>
-                                    <strong>Terminal method (macOS 15+):</strong> Run this and open the app
+                                    <strong>Terminal method (any macOS):</strong> Run this and open the app
                                     again:
                                     <div class="code-block">
                                         <pre>
@@ -94,6 +114,12 @@ export function Page(): Skrapa.Page {
                                             Copy
                                         </button>
                                     </div>
+                                </li>
+                                <li>
+                                    <strong>Right-click method (before macOS 15):</strong> In
+                                    Applications, right-click Menu OTP, choose <strong>Open</strong>, then
+                                    click <strong>Open</strong> in the dialog. macOS 15 and later no longer
+                                    offer this.
                                 </li>
                                 <li>
                                     <strong>Settings method:</strong> Check System Settings → Privacy &

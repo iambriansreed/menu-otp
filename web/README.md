@@ -1,7 +1,7 @@
 # Menu OTP website
 
 The site for [Menu OTP](https://github.com/iambriansreed/menu-otp), built with
-[Skrapa](https://skrapa.iambrian.com) and served from `menu-otp.iambrian.com`.
+[Skrapa](https://skrapa.iambrian.com) and served from `otp.iambrian.com`.
 [`.github/workflows/deploy-web.yml`](../.github/workflows/deploy-web.yml) deploys it as
 the last step of a release, so the version it shows is always one that was published.
 

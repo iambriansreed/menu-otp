@@ -1,7 +1,7 @@
 name: Deploy Web
 
 # Builds the site with Skrapa and publishes web/dist to GitHub Pages. The custom domain
-# (menu-otp.iambrian.com) and the "GitHub Actions" source are set in the repository's
+# (otp.iambrian.com) and the "GitHub Actions" source are set in the repository's
 # Pages settings, not by a committed CNAME file.
 #
 # Not triggered by pushes itself: release.yml calls it as its last job, with the

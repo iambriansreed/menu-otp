@@ -63,3 +63,7 @@ jobs:
 
             - name: Build the site
               run: npm run build
+
+            # web/assets/install.sh is what people pipe into sh; it must at least parse
+            - name: Check the install script
+              run: sh -n web/assets/install.sh

@@ -288,17 +288,29 @@ h1 {
 }
 
 .download .prose,
+.download > .code-block,
 .build-locally .code-block {
     text-align: left;
     max-width: 42rem;
     margin: 2.5rem auto 0;
 }
 
+/* The one-line install sits under the download button, its lede tight above it */
+.install-lede {
+    max-width: 42rem;
+    margin: 2.5rem auto 0;
+}
+
+.download > .install-lede + .code-block {
+    margin-top: 1rem;
+}
+
 .download .prose ol {
     gap: 1rem;
 }
 
-.build-locally .sub {
+.build-locally .sub,
+.download > .sub {
     margin-top: 1.25rem;
 }
 
