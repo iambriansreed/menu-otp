@@ -2,6 +2,7 @@ import AppKit
 import OTPCore
 import ServiceManagement
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Issuer/account/secret text for an edit panel or the manual Add form. A class so
 /// an IconEditorModel's `label` closure can read the live values.
@@ -28,6 +29,8 @@ struct SettingsView: View {
         var reordering = false
         /// Test hook: open Import's file picker as soon as the window appears.
         var openFilePicker = false
+        /// Test hook: show Export's plain-text warning as soon as the window appears.
+        var confirmExport = false
     }
 
     let model: AccountsModel
@@ -58,12 +61,14 @@ struct SettingsView: View {
     /// focus, which made the edit panel and the Add Account form feel sluggish.
     private var mainView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: SettingsMetrics.sectionGap) {
                 SettingsSection("Accounts") {
-                    if model.accounts.count > 1 {
-                        Button("Reorder") { reordering = true }
-                            .controlSize(.small)
-                            .help("Drag accounts into the order the menu shows them")
+                    HStack(spacing: 8) {
+                        BulkIconsRow(model: model)
+                        if model.accounts.count > 1 {
+                            Button("Reorder") { reordering = true }
+                                .help("Drag accounts into the order the menu shows them")
+                        }
                     }
                 } content: {
                     VStack(spacing: 0) {
@@ -74,31 +79,28 @@ struct SettingsView: View {
                                 .padding(.vertical, 14)
                         }
                         ForEach(Array(model.accounts.enumerated()), id: \.element.identity) { index, account in
-                            if index > 0 { Divider().padding(.leading, 10) }
+                            if index > 0 { Divider().padding(.leading, SettingsMetrics.cardPadding) }
                             AccountRowView(account: account, model: model, startEditing: initial.editing == account.identity)
-                                .padding(.horizontal, 10)
+                                .padding(.horizontal, SettingsMetrics.cardPadding)
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(nsColor: .separatorColor)))
-                    BulkIconsRow(model: model)
+                    // Rows pad themselves vertically, so the dividers run the full height
+                    .settingsCard(padded: false)
                 }
 
                 SettingsSection("Add Account") {
                     AddAccountView(model: model, initialTab: initial.addTab, openFilePicker: initial.openFilePicker)
+                        .settingsCard()
                 }
 
                 SettingsSection("General") {
-                    LoginItemRow(loginItem: loginItem)
-                }
-
-                // The same version and build the About panel shows, where someone
-                // reporting a problem will actually look for it
-                if let version = AppEnvironment.versionText {
-                    Text("\(AppEnvironment.appName) \(version)")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity)
+                    // Aligned on the first baseline, so the button stays level with the
+                    // toggle when the login item's approval hint adds lines below it
+                    HStack(alignment: .firstTextBaseline) {
+                        LoginItemRow(loginItem: loginItem)
+                        ExportRow(model: model, confirming: initial.confirmExport)
+                    }
+                    .settingsCard()
                 }
             }
             .padding(20)
@@ -122,7 +124,9 @@ struct SettingsView: View {
             List {
                 ForEach(model.accounts, id: \.identity) { account in
                     HStack(spacing: 10) {
-                        Image(systemName: "line.3.horizontal").foregroundStyle(.secondary)
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                         IconView(icon: account.icon, placeholderSeed: account.issuer.isEmpty ? account.account : account.issuer)
                         Text(account.label)
                             .lineLimit(1)
@@ -146,8 +150,34 @@ struct SettingsView: View {
     }
 }
 
-/// A titled group, styled like the inset List sections this window used to use,
-/// with an optional control at the right of the title.
+/// One set of spacing for every section, so they line up.
+enum SettingsMetrics {
+    static let sectionGap: CGFloat = 20
+    /// Between a section's heading and its card
+    static let headingGap: CGFloat = 8
+    /// Inside every card, and the account rows' side inset
+    static let cardPadding: CGFloat = 12
+    static let cardRadius: CGFloat = 8
+}
+
+extension View {
+    /// The rounded, bordered card every section's content sits in, as in System
+    /// Settings. `padded: false` for content that insets itself (the account rows).
+    func settingsCard(padded: Bool = true) -> some View {
+        padding(padded ? SettingsMetrics.cardPadding : 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: SettingsMetrics.cardRadius)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: SettingsMetrics.cardRadius)
+                    .strokeBorder(Color(nsColor: .separatorColor))
+            )
+    }
+}
+
+/// A titled group: a heading, an optional control at its right, then the content.
 struct SettingsSection<Accessory: View, Content: View>: View {
     let title: String
     let accessory: Accessory
@@ -160,11 +190,12 @@ struct SettingsSection<Accessory: View, Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: SettingsMetrics.headingGap) {
             HStack {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 accessory
             }
@@ -199,8 +230,8 @@ struct BulkIconsRow: View {
     private var anyMissing: Bool { model.accounts.contains(where: \.hasNoIcon) }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Spacer()
+        // In the Accounts heading, left of Reorder
+        HStack(spacing: 8) {
             if !status.isEmpty {
                 Text(status)
                     .font(.caption)
@@ -233,6 +264,98 @@ struct BulkIconsRow: View {
             running = false
             success = !anyMissing
             status = found > 0 ? "Found \(found) of \(targets.count)." : "No favicons found."
+        }
+    }
+}
+
+/// Export writes every secret to disk unencrypted, so it asks first and says so.
+struct ExportRow: View {
+    let model: AccountsModel
+    @State private var confirming: Bool
+    @State private var status = ""
+    @State private var host = HostWindow()
+
+    init(model: AccountsModel, confirming: Bool = false) {
+        self.model = model
+        _confirming = State(initialValue: confirming)
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Spacer()
+            if !status.isEmpty {
+                Text(status).font(.caption).foregroundStyle(.secondary)
+            }
+            Button("Export Accounts…") { confirming = true }
+                .disabled(model.accounts.isEmpty)
+                .help("Save every account as an otpauth:// URL, one per line, for Import or another app")
+        }
+        .background(HostWindowReader(host: host))
+        .alert("Export secrets in plain text?", isPresented: $confirming) {
+            Button("Export…", role: .destructive, action: choosePlace)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The file holds every account's secret, unencrypted. Anyone who can read it "
+                + "can generate your codes. Keep it somewhere safe and delete it when you're done.")
+        }
+    }
+
+    /// A sheet on the Settings window, like Import's picker. NSSavePanel rather than
+    /// fileExporter so the model writes the file itself, with owner-only permissions.
+    ///
+    /// The window is the one this row lives in, never `NSApp.keyWindow`: this runs from
+    /// the warning alert's button, while that alert's sheet is still key and closing,
+    /// and a panel attached to it vanished along with it. On the Settings window,
+    /// AppKit queues the panel until the alert's sheet has gone.
+    private func choosePlace() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "menu_otp_export.txt"
+        panel.allowedContentTypes = [.plainText]
+        panel.canCreateDirectories = true
+        let save = { (response: NSApplication.ModalResponse) in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                try model.export(to: url)
+                let count = model.accounts.count
+                status = "Exported \(count) account\(count == 1 ? "" : "s")."
+            } catch {
+                status = ""
+                NSApp.presentError(error)
+            }
+        }
+        if let window = host.window {
+            panel.beginSheetModal(for: window, completionHandler: save)
+        } else {
+            save(panel.runModal())
+        }
+    }
+}
+
+/// The window a SwiftUI view is in, for AppKit calls that need one. A class, so
+/// setting it from `HostWindowReader` doesn't redraw the view that holds it.
+final class HostWindow {
+    weak var window: NSWindow?
+}
+
+struct HostWindowReader: NSViewRepresentable {
+    let host: HostWindow
+
+    func makeNSView(context: Context) -> NSView { Reader(host: host) }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class Reader: NSView {
+        let host: HostWindow
+
+        init(host: HostWindow) {
+            self.host = host
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError("not used") }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { host.window = window }
         }
     }
 }

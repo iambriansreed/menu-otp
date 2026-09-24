@@ -3,6 +3,10 @@ import Foundation
 /// One row of the menu-bar popover.
 public struct MenuRow: Equatable, Sendable {
     public enum Kind: Equatable, Sendable {
+        /// The menu's name in bold at the top, as macOS 26's own status menus
+        /// (Focus, Wi-Fi) open with
+        case title
+        /// A dimmed section label ("Last clicked: ...")
         case header
         case item
         case separator
@@ -13,6 +17,7 @@ public struct MenuRow: Equatable, Sendable {
         /// the right account if Settings reordered the list since the menu opened.
         case copy(AccountIdentity)
         case settings
+        case about
         case quit
     }
 
@@ -37,7 +42,7 @@ public struct MenuRow: Equatable, Sendable {
 
 public enum MenuRows {
     public static func build(accounts: [Account], lastClicked: Account?, appName: String) -> [MenuRow] {
-        var rows: [MenuRow] = []
+        var rows = [MenuRow(kind: .title, label: appName), MenuRow(kind: .separator)]
         if let lastClicked {
             rows.append(MenuRow(kind: .header, label: "Last clicked: \(lastClicked.label)"))
         }
@@ -50,8 +55,11 @@ public enum MenuRows {
                 rows.append(MenuRow(kind: .item, label: account.label, action: .copy(account.identity), icon: account.icon))
             }
         }
-        rows.append(MenuRow(kind: .separator))
+        // Every account hidden leaves nothing under the title's separator; a second
+        // one straight after it would draw a double line
+        if rows.last?.kind != .separator { rows.append(MenuRow(kind: .separator)) }
         rows.append(MenuRow(kind: .item, label: "\(appName) Settings...", action: .settings))
+        rows.append(MenuRow(kind: .item, label: "About \(appName)", action: .about))
         rows.append(MenuRow(kind: .item, label: "Quit \(appName)", action: .quit, accelerator: "⌘Q"))
         return rows
     }

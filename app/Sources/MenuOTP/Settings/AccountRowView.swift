@@ -15,6 +15,20 @@ struct AccountRowView: View {
     @State private var isEditing = false
     @State private var isHovering = false
     @State private var confirmingDelete = false
+    @State private var isHoveringDelete = false
+    @FocusState private var focusedAction: RowAction?
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+
+    private enum RowAction: Hashable {
+        case hide, edit, delete
+    }
+
+    /// The delete alert counts too: its row keeps its buttons while it's up.
+    private var showsActions: Bool {
+        isHovering || focusedAction != nil || voiceOver || confirmingDelete
+    }
+
+    private var actionColor: Color { showsActions ? .secondary : .clear }
     @State private var fields = AccountFields()
     @State private var iconEditor: IconEditorModel?
     @State private var error = ""
@@ -47,22 +61,45 @@ struct AccountRowView: View {
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
-            Button {
-                report { try model.toggleHidden(account.identity) }
-            } label: {
-                Image(systemName: account.hidden ? "eye.slash" : "eye").modifier(RowActionPadding())
+            // Only while the row is pointed at or one of its buttons has keyboard focus,
+            // as in Finder and System Settings lists, so the list reads as names rather
+            // than a column of buttons. Always shown to VoiceOver users. They keep their
+            // space while hidden, so a name never re-truncates as the pointer moves.
+            //
+            // Hidden by drawing them in a clear colour, not with opacity(0): SwiftUI
+            // drops a zero-opacity view from the accessibility tree, which took the
+            // buttons away from Voice Control and Switch Control (and failed
+            // app/scripts/a11y-test.sh). A clear icon is still a button to all of them.
+            HStack(spacing: 2) {
+                Button {
+                    report { try model.toggleHidden(account.identity) }
+                } label: {
+                    Image(systemName: account.hidden ? "eye.slash" : "eye").modifier(RowActionPadding())
+                }
+                .help(account.hidden ? "Show in menu" : "Hide from menu")
+                // Named per account: VoiceOver otherwise reads the symbol ("eye",
+                // "trash") and every row's buttons sound the same
+                .accessibilityLabel(account.hidden ? "Show \(account.label) in menu" : "Hide \(account.label) from menu")
+                .focused($focusedAction, equals: .hide)
+                Button(action: beginEditing) {
+                    Image(systemName: "pencil").modifier(RowActionPadding())
+                }
+                .help("Edit")
+                .accessibilityLabel("Edit \(account.label)")
+                .focused($focusedAction, equals: .edit)
+                Button {
+                    confirmingDelete = true
+                } label: {
+                    Image(systemName: "trash").modifier(RowActionPadding())
+                }
+                // Grey like the others until it's the one being pointed at
+                .foregroundStyle(isHoveringDelete ? Color.red : actionColor)
+                .onHover { isHoveringDelete = $0 }
+                .help("Delete")
+                .accessibilityLabel("Delete \(account.label)")
+                .focused($focusedAction, equals: .delete)
             }
-            .help(account.hidden ? "Show in menu" : "Hide from menu")
-            Button(action: beginEditing) {
-                Text("Edit").modifier(RowActionPadding())
-            }
-            Button {
-                confirmingDelete = true
-            } label: {
-                Image(systemName: "xmark").modifier(RowActionPadding())
-            }
-            .foregroundStyle(.red)
-            .help("Delete")
+            .foregroundStyle(actionColor)
         }
         .buttonStyle(.borderless)
         .padding(.vertical, 7)
@@ -79,13 +116,9 @@ struct AccountRowView: View {
     }
 
     private func editPanel(_ iconEditor: IconEditorModel) -> some View {
-        @Bindable var fields = fields
-        return VStack(alignment: .leading, spacing: 6) {
-            TextField("Issuer", text: $fields.issuer)
-                .focused($issuerFocused)
-            TextField("Account", text: $fields.account)
-            TextField("Secret", text: $fields.secret)
-            IconEditorView(editor: iconEditor, placeholderSeed: fields.placeholderSeed)
+        VStack(alignment: .leading, spacing: 8) {
+            // The same labelled layout as Add Account's Manual form
+            AccountFieldsGrid(fields: fields, iconEditor: iconEditor, issuerFocus: $issuerFocused, onSubmit: save)
             if !error.isEmpty {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
@@ -96,7 +129,7 @@ struct AccountRowView: View {
             }
         }
         .textFieldStyle(.roundedBorder)
-        .padding(.vertical, 10)
+        .padding(.vertical, SettingsMetrics.cardPadding)
     }
 
     private func beginEditing() {
@@ -136,7 +169,7 @@ struct AccountRowView: View {
     }
 }
 
-/// Breathing room around a row's small borderless buttons (hide, Edit, delete), with a
+/// Breathing room around a row's small borderless buttons (hide, edit, delete), with a
 /// click target that covers it.
 struct RowActionPadding: ViewModifier {
     func body(content: Content) -> some View {

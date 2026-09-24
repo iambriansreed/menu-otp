@@ -77,6 +77,40 @@ func rejectsInvalidURLs(raw: String) {
     #expect(list.isEmpty)
 }
 
+@Test(arguments: [
+    Account(account: "jane", secret: "ABCD", issuer: "GitHub"),
+    Account(account: "me", secret: "ABCD", issuer: ""),
+    Account(account: "jane doe@example.com", secret: "ABCD", issuer: "Amazon Web Services"),
+    Account(account: "a+b&c=d?e#f", secret: "ABCD", issuer: "Q&A + 100%"),
+    Account(account: "Zoë ✓", secret: "ABCD", issuer: "Ünïcode"),
+    Account(account: "user", secret: "ABCD", issuer: "Corp:Staging"),
+    Account(account: "ns:user", secret: "ABCD", issuer: ""),
+    Account(account: "ns:user", secret: "ABCD", issuer: "Corp"),
+])
+func urlRoundTripsThroughParse(account: Account) {
+    #expect(OTPAuthURL.parse(OTPAuthURL.make(account)) == account)
+}
+
+@Test func madeURLUsesTheStandardLabelAndIssuer() {
+    let a = Account(account: "jane@example.com", secret: "ABCD", issuer: "Amazon Web Services")
+    #expect(OTPAuthURL.make(a)
+        == "otpauth://totp/Amazon%20Web%20Services:jane%40example.com?secret=ABCD&issuer=Amazon%20Web%20Services")
+    #expect(OTPAuthURL.make(Account(account: "me", secret: "ABCD", issuer: "")) == "otpauth://totp/me?secret=ABCD")
+}
+
+@Test func exportLinesReimportEveryAccount() {
+    let original = [
+        Account(account: "jane", secret: "ABCD", issuer: "GitHub", icon: "🐙", hidden: true),
+        Account(account: "root", secret: "EFGH", issuer: "AWS"),
+    ]
+    let text = original.exportLines()
+    #expect(text.hasSuffix("\n"))
+    var reimported: [Account] = []
+    #expect(reimported.importLines(text).added == 2)
+    #expect(reimported.map(\.identity) == original.map(\.identity))
+    #expect(reimported.map(\.secret) == original.map(\.secret))
+}
+
 @Test func importSummaryWithNothingValid() {
     var list: [Account] = []
     #expect(list.importLines("\n\n").text == "No valid URLs found.")

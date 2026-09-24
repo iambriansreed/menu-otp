@@ -1,4 +1,5 @@
 import { GitHubLink, REPO_URL } from '../components/github-link';
+import { SiteFooter } from '../components/site-footer';
 
 const SETUP_COMMAND = `git clone ${REPO_URL}.git && cd menu-otp`;
 
@@ -259,7 +260,10 @@ export function Page(): Skrapa.Page {
                                 <td>
                                     <code>npm run dev</code>
                                 </td>
-                                <td>Run the demo app and this site's dev server together</td>
+                                <td>
+                                    Run the demo app and this site's dev server together; the app
+                                    rebuilds and restarts when anything under <code>app/</code> changes
+                                </td>
                             </tr>
                             <tr>
                                 <td>
@@ -282,6 +286,7 @@ export function Page(): Skrapa.Page {
                     </a>
                 </p>
             </div>
+            <SiteFooter />
         </>
     );
 }

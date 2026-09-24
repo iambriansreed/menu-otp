@@ -45,7 +45,8 @@ struct AddAccountView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .fixedSize()
+            // Across the whole card, like the form below it
+            .frame(maxWidth: .infinity)
             .onChange(of: tab) {
                 // Messages belong to the tab that produced them
                 error = ""
@@ -54,13 +55,10 @@ struct AddAccountView: View {
 
             switch tab {
             case .url:
-                TextField("otpauth://totp/Issuer:Account?secret=...", text: $otpURL)
-                    .onSubmit(add)
+                // The URL carries the secret, so it's masked like the Secret fields
+                SecretField(title: "otpauth://totp/Issuer:Account?secret=...", text: $otpURL, name: "URL", onSubmit: add)
             case .manual:
-                TextField("Issuer", text: $fields.issuer).onSubmit(add)
-                TextField("Account", text: $fields.account).onSubmit(add)
-                TextField("Secret", text: $fields.secret).onSubmit(add)
-                IconEditorView(editor: manualIconEditor, placeholderSeed: fields.placeholderSeed)
+                AccountFieldsGrid(fields: fields, iconEditor: manualIconEditor, onSubmit: add)
             case .importFile:
                 importDropZone
                 if !importResult.isEmpty {
@@ -79,7 +77,6 @@ struct AddAccountView: View {
             }
         }
         .textFieldStyle(.roundedBorder)
-        .padding(.vertical, 4)
         // A sheet on the Settings window (same window, same Space), not a free-floating
         // panel. Any file with data in it: the contents decide what imports.
         .fileImporter(isPresented: $choosingFile, allowedContentTypes: [.data]) { result in

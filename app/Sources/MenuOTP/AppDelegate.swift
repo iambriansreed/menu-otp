@@ -19,8 +19,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         let dataDirectory = environment.dataDirectory
-        try? FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
-        guard let lock = InstanceLock(path: dataDirectory.appendingPathComponent("instance.lock")) else {
+        let acquired: InstanceLock?
+        do {
+            try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
+            acquired = try InstanceLock.acquire(at: dataDirectory.appendingPathComponent("instance.lock"))
+        } catch {
+            // Not "already running": nothing else will open Settings, so quitting
+            // quietly here would look like the app never launched
+            quit(
+                "\(AppEnvironment.appName) couldn't use its data folder",
+                "\(error.localizedDescription)\n\nCheck the permissions of \(dataDirectory.path) "
+                    + "and that the disk has free space."
+            )
+            return
+        }
+        guard let lock = acquired else {
             // Another instance owns this data directory and keeps running. Quitting
             // before anything is read means this one can never write behind its back.
             if environment.selfTest || environment.snapshotDirectory != nil {
@@ -59,15 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             // Never run without the real accounts loaded: the first save would
-            // replace them with whatever is in memory. (Activate first: an
-            // accessory app's alert can otherwise open behind other windows.)
-            NSApp.activate()
-            let alert = NSAlert()
-            alert.messageText = "\(AppEnvironment.appName) couldn't open its accounts"
-            alert.informativeText = "\(error.localizedDescription)\n\nNothing was changed. "
-                + "If macOS asked for Keychain access, open the app again and choose Always Allow."
-            alert.runModal()
-            NSApp.terminate(nil)
+            // replace them with whatever is in memory
+            quit(
+                "\(AppEnvironment.appName) couldn't open its accounts",
+                "\(error.localizedDescription)\n\nNothing was changed. "
+                    + "If macOS asked for Keychain access, open the app again and choose Always Allow."
+            )
             return
         }
 
@@ -112,6 +122,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         settingsController?.show()
         return false
+    }
+
+    /// A launch that can't go on: say why, then quit. In --self-test/--snapshot it
+    /// prints and exits 2 instead, since a modal alert would hang an unattended run.
+    private func quit(_ title: String, _ text: String) {
+        if environment.selfTest || environment.snapshotDirectory != nil {
+            FileHandle.standardError.write(Data("\(title): \(text)\n".utf8))
+            exit(2)
+        }
+        // Activate first: an accessory app's alert can otherwise open behind other windows
+        NSApp.activate()
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = text
+        alert.runModal()
+        NSApp.terminate(nil)
     }
 
     /// The store existed but couldn't be decrypted (its Keychain key was deleted or

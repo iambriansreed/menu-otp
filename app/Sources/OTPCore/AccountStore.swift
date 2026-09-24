@@ -71,9 +71,15 @@ public final class AccountStore {
         }
     }
 
-    /// Encrypts to a temp file beside the real one, then rename(2)s it into place.
-    /// rename is atomic on one volume, so a crash mid-write leaves the old file or
-    /// the new one, never half of one (which load() would treat as unreadable).
+    /// Encrypts to a temp file beside the real one, flushes it to the disk, then
+    /// rename(2)s it into place and flushes the directory. rename is atomic on one
+    /// volume, so a crash mid-write leaves the old file or the new one, never half of
+    /// one (which load() would treat as unreadable).
+    ///
+    /// The flushes are for power loss rather than a crash: without them the rename can
+    /// reach the disk before the data it points at, leaving an empty accounts.enc, the
+    /// only copy of the user's secrets. F_FULLFSYNC, not fsync: on macOS fsync only hands
+    /// the data to the drive, whose cache can still lose it.
     public func save(_ accounts: [Account]) throws {
         let key = try keyProvider.key()
         let json = try JSONEncoder().encode(accounts)
@@ -83,11 +89,51 @@ public final class AccountStore {
         let dir = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let tmp = dir.appendingPathComponent("\(fileURL.lastPathComponent).tmp")
-        guard FileManager.default.createFile(
-            atPath: tmp.path, contents: Self.magic + sealed, attributes: [.posixPermissions: 0o600]
-        ) else { throw CocoaError(.fileWriteUnknown) }
-        guard rename(tmp.path, fileURL.path) == 0 else {
-            throw CocoaError(.fileWriteUnknown, userInfo: [NSUnderlyingErrorKey: POSIXError(.init(rawValue: errno) ?? .EIO)])
+
+        // A temp file left by a crash could have any mode; O_EXCL below then creates a
+        // fresh one with 0600 rather than reusing it
+        unlink(tmp.path)
+        let fd = open(tmp.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        guard fd >= 0 else { throw Self.writeError() }
+        do {
+            defer { close(fd) }
+            try Self.writeAll(Self.magic + sealed, to: fd)
+            guard Self.fullSync(fd) else { throw Self.writeError() }
+        } catch {
+            unlink(tmp.path)
+            throw error
         }
+        guard rename(tmp.path, fileURL.path) == 0 else { throw Self.writeError() }
+        // The rename lives in the directory's entry; flush that too. Best effort: the
+        // data is already safe, and a failure here isn't worth failing the save over.
+        let dirFD = open(dir.path, O_RDONLY)
+        if dirFD >= 0 {
+            _ = Self.fullSync(dirFD)
+            close(dirFD)
+        }
+    }
+
+    private static func writeAll(_ data: Data, to fd: Int32) throws {
+        try data.withUnsafeBytes { buffer in
+            var offset = 0
+            while offset < buffer.count {
+                let written = write(fd, buffer.baseAddress! + offset, buffer.count - offset)
+                if written < 0 {
+                    if errno == EINTR { continue }
+                    throw writeError()
+                }
+                offset += written
+            }
+        }
+    }
+
+    /// F_FULLFSYNC where the filesystem supports it, plain fsync where it doesn't (some
+    /// network and FAT volumes).
+    private static func fullSync(_ fd: Int32) -> Bool {
+        fcntl(fd, F_FULLFSYNC) == 0 || fsync(fd) == 0
+    }
+
+    private static func writeError() -> CocoaError {
+        CocoaError(.fileWriteUnknown, userInfo: [NSUnderlyingErrorKey: POSIXError(.init(rawValue: errno) ?? .EIO)])
     }
 }

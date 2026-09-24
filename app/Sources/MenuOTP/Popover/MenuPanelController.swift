@@ -41,9 +41,9 @@ final class MenuPanelController {
         // The controller sizes the panel itself. Left at the default, NSHostingView
         // adds min/max-size constraints that collapse the panel to 0x0.
         hostingView.sizingOptions = []
-        hostingView.frame = panel.effectView.bounds
+        hostingView.frame = panel.contentHost.bounds
         hostingView.autoresizingMask = [.width, .height]
-        panel.effectView.addSubview(hostingView)
+        panel.contentHost.addSubview(hostingView)
 
         hostingView.rowAt = { [weak self] point in
             self?.highlight.rowFrames.first { $0.value.contains(point) }?.key
@@ -85,11 +85,15 @@ final class MenuPanelController {
     /// frame covers the menu bar's strip too, and a placed item would look unplaced.
     /// Just after launch the item's window sits at a placeholder origin near the
     /// bottom-left of the screen, which the top-half test rejects.
-    static func placedFrame(of item: NSStatusItem) -> (frame: NSRect, screen: NSScreen)? {
+    ///
+    /// `menuBarBottom` is the bottom of the item's window, which spans the menu bar's
+    /// full height. The button inside it is shorter (22pt in a 33pt bar on a notched
+    /// display), so hanging the menu from the button put it inside the bar.
+    static func placedFrame(of item: NSStatusItem) -> (frame: NSRect, menuBarBottom: CGFloat, screen: NSScreen)? {
         guard let button = item.button, let window = button.window, let screen = window.screen else { return nil }
         let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
         guard frame.midY > screen.frame.midY else { return nil }
-        return (frame, screen)
+        return (frame, window.frame.minY, screen)
     }
 
     var isVisible: Bool { panel.isVisible }
@@ -147,6 +151,14 @@ final class MenuPanelController {
         case .settings:
             hide()
             openSettings()
+        case .about:
+            hide()
+            // The stock panel, filled in from the bundle: name, version and build,
+            // NSHumanReadableCopyright, and Credits.rtf. Activated first, since an
+            // accessory app's window otherwise opens behind the frontmost app's (and
+            // only now, with the menu already hidden: the popover never activates).
+            NSApp.activate()
+            NSApp.orderFrontStandardAboutPanel(nil)
         case .copy(let identity):
             // A malformed secret (hand-edited store, old demo file) can't produce a
             // code; nothing is copied and nothing changes
@@ -215,9 +227,10 @@ final class MenuPanelController {
         let visible = screen.visibleFrame
 
         let width = ceil(min(max(natural.width, Self.minWidth), Self.maxWidth))
-        // Hang 2pt under the status item. If it isn't placed yet (just after
+        // Flush against the bottom of the menu bar, where system menus hang (measured
+        // against a system menu on screen). If the item isn't placed yet (just after
         // launch), hang from the top of the visible frame under the pointer instead.
-        let top = placed.map { min($0.frame.minY, screen.frame.maxY) - 2 } ?? visible.maxY - 2
+        let top = placed.map { min($0.menuBarBottom, screen.frame.maxY) } ?? visible.maxY
         let available = top - visible.minY - Self.edgeGap
         let height = ceil(max(min(natural.height, available), 1))
         if height < natural.height {

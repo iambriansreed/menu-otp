@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 /// The app's single source of truth for accounts, shared by the popover and the
 /// Settings window. Every change goes through `mutate`, which validates, persists,
@@ -199,6 +200,17 @@ public final class AccountsModel {
         return summary
     }
 
+    /// Writes every account's otpauth:// URL, secrets in plain text, to `url`, with
+    /// mode 0600. createFile writes a new file and renames it into place, so a
+    /// replaced file's old (possibly world-readable) mode isn't inherited. It is still
+    /// unencrypted, which is why Settings asks before calling this.
+    public func export(to url: URL) throws {
+        guard FileManager.default.createFile(
+            atPath: url.path, contents: Data(accounts.exportLines().utf8),
+            attributes: [.posixPermissions: 0o600]
+        ) else { throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: url.path]) }
+    }
+
     /// Settings' post-add lookup: fills the icon if the account still has none.
     /// A miss is not recorded (only the launch backfill stamps iconCheckedAt).
     @discardableResult
@@ -270,10 +282,19 @@ public final class AccountsModel {
                 )
             }
         } catch {
+            // Nobody is waiting on a background lookup to show this to, but a save that
+            // keeps failing (disk full, Keychain locked) shouldn't vanish without a
+            // trace: Console.app, subsystem com.iambrian.menu-otp. The account's name is
+            // private, redacted unless a debugger is attached; the error text isn't.
+            Self.log.error(
+                "Couldn't save an icon lookup for \(identity.issuer, privacy: .private):\(identity.account, privacy: .private): \(error.localizedDescription, privacy: .public)"
+            )
             return false
         }
         return changed
     }
+
+    private static let log = Logger(subsystem: "com.iambrian.menu-otp", category: "icons")
 }
 
 /// Only touched on the main actor (inside MainActor.run above).

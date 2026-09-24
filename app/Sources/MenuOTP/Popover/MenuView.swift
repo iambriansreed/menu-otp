@@ -18,6 +18,54 @@ enum MenuMetrics {
     static let radius: CGFloat = 5
 }
 
+/// The colours a real NSMenu uses (read from a live one's item text fields and measured
+/// against it; see MenuPanel). AppKit's own catalog colours rather than SwiftUI's
+/// `.primary`/`.secondary`, which render lighter on the panel's material.
+enum MenuColors {
+    /// Item text. `Color(nsColor: .labelColor)` doesn't come out as labelColor here:
+    /// SwiftUI swaps the catalog colour for its own primary, measured at #5b5b5b in light
+    /// mode against the real menu's #313131 (and too bright in dark mode). So it's
+    /// resolved to AppKit's actual value for the appearance the view is in; the view
+    /// passes its colour scheme and contrast, so it follows System Settings as they change.
+    static func label(_ scheme: ColorScheme, _ contrast: ColorSchemeContrast) -> Color {
+        let name: NSAppearance.Name = switch (scheme, contrast) {
+        case (.dark, .increased): .accessibilityHighContrastDarkAqua
+        case (.dark, _): .darkAqua
+        case (_, .increased): .accessibilityHighContrastAqua
+        default: .aqua
+        }
+        var resolved = NSColor.labelColor
+        NSAppearance(named: name)?.performAsCurrentDrawingAppearance {
+            resolved = NSColor.labelColor.usingColorSpace(.sRGB) ?? .labelColor
+        }
+        return Color(nsColor: resolved)
+    }
+    /// Section headers and key equivalents (⌘Q)
+    static let tertiary = Color(nsColor: .tertiaryLabelColor)
+    static let selectedText = Color(nsColor: .selectedMenuItemTextColor)
+}
+
+/// The highlight behind the selected row and the Copied confirmation: the emphasized
+/// selection material, as menus use, so it follows the accent colour and the
+/// appearance the way the system's does. A flat accent fill came out much brighter.
+struct MenuHighlightBackground: NSViewRepresentable {
+    let radius: CGFloat
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .selection
+        view.isEmphasized = true
+        view.state = .active
+        view.blendingMode = .withinWindow
+        view.wantsLayer = true
+        view.layer?.cornerRadius = radius
+        view.layer?.masksToBounds = true
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
 /// What the popover shows. The controller swaps it in whole and then measures, so
 /// the panel is never on screen at a stale size.
 enum MenuContent: Equatable {
@@ -83,21 +131,28 @@ struct MenuView: View {
     @ViewBuilder
     private func rowView(_ row: MenuRow, index: Int) -> some View {
         switch row.kind {
+        case .title:
+            MenuTitleRow(label: row.label)
         case .separator:
+            // separatorColor measured within 1/255 of a real menu's separator, both modes
             Rectangle()
-                .fill(Color.primary.opacity(0.12))
+                .fill(Color(nsColor: .separatorColor))
                 .frame(height: 1)
                 .padding(.horizontal, MenuMetrics.separatorInset)
                 .padding(.vertical, 5)
+                .accessibilityHidden(true)
         case .header:
-            // Section headers sit tighter and smaller than items, as they do natively
+            // Section headers sit tighter and smaller than items, as they do natively,
+            // in the tertiary label colour a real menu's section header measured at
             Text(row.label)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(MenuColors.tertiary)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .padding(EdgeInsets(top: 4, leading: MenuMetrics.itemInset, bottom: 2, trailing: MenuMetrics.itemInset))
                 .padding(.horizontal, MenuMetrics.itemInset)
+                // So VoiceOver's rotor can jump between sections
+                .accessibilityAddTraits(.isHeader)
         case .item:
             HighlightedRow(row: row, index: index, highlight: highlight, onActivate: onActivate)
                 .id(index)
@@ -106,6 +161,24 @@ struct MenuView: View {
                 })
                 .padding(.top, index == 0 ? 0 : MenuMetrics.rowGap)
         }
+    }
+}
+
+/// The menu's name in bold, in the item text colour, lined up with the item labels:
+/// how macOS 26's own status menus (Focus, Wi-Fi) open.
+struct MenuTitleRow: View {
+    let label: String
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: MenuMetrics.fontSize, weight: .bold))
+            .foregroundStyle(MenuColors.label(colorScheme, contrast))
+            .lineLimit(1)
+            .frame(height: MenuMetrics.rowHeight)
+            .padding(.horizontal, MenuMetrics.itemInset + MenuMetrics.itemPadding)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -144,6 +217,8 @@ struct ScrollToHighlight: View {
 struct MenuItemRow: View {
     let row: MenuRow
     let isActive: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         HStack(spacing: MenuMetrics.iconGap) {
@@ -154,22 +229,21 @@ struct MenuItemRow: View {
             Text(row.label)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .foregroundStyle(isActive ? Color.white : Color.primary)
+                .foregroundStyle(isActive ? MenuColors.selectedText : MenuColors.label(colorScheme, contrast))
             Spacer(minLength: 0)
             if let accelerator = row.accelerator {
                 Text(accelerator)
                     .monospacedDigit()
-                    .foregroundStyle(isActive ? Color.white.opacity(0.75) : Color.secondary)
+                    .foregroundStyle(isActive ? MenuColors.selectedText : MenuColors.tertiary)
                     .padding(.leading, 12)
             }
         }
         .font(.system(size: MenuMetrics.fontSize))
         .padding(.horizontal, MenuMetrics.itemPadding)
         .frame(height: MenuMetrics.rowHeight)
-        .background(
-            RoundedRectangle(cornerRadius: MenuMetrics.radius)
-                .fill(isActive ? Color(nsColor: .controlAccentColor) : Color.clear)
-        )
+        .background {
+            if isActive { MenuHighlightBackground(radius: MenuMetrics.radius) }
+        }
         .padding(.horizontal, MenuMetrics.itemInset)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
@@ -220,11 +294,11 @@ struct CopiedView: View {
         .font(.system(size: 18, weight: .semibold))
         .monospacedDigit()
         .lineLimit(1)
-        .foregroundStyle(.white)
+        .foregroundStyle(MenuColors.selectedText)
         .padding(.vertical, 14)
         .padding(.horizontal, 20)
         .frame(minWidth: 300)
-        .background(RoundedRectangle(cornerRadius: MenuMetrics.radius).fill(Color(nsColor: .controlAccentColor)))
+        .background(MenuHighlightBackground(radius: MenuMetrics.radius))
         .padding(.horizontal, MenuMetrics.itemInset)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(issuer) code \(code) copied")

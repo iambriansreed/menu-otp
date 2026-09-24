@@ -55,6 +55,8 @@ MENU_OTP_NETWORK_TESTS=1 app/scripts/test.sh --filter liveLookup   # real icon s
 (cd app && swift build)                  # compile everything
 app/scripts/demo.sh                      # debug .app in demo mode (fake accounts)
 app/scripts/demo.sh --self-test          # scripted UI checks, prints PASS/FAIL, exit status = result
+app/scripts/a11y-test.sh                 # VoiceOver's view of Settings, read from outside; PASS/FAIL
+                                         # (needs the terminal allowed under Accessibility)
 app/scripts/demo.sh --snapshot /tmp/snaps  # screenshots of the menu and Settings
                                          # (--real-icons: fetch real favicons, as for the website)
                                          # (both use their own demo data dir, so they
@@ -65,13 +67,15 @@ app/scripts/make-icons.sh                # .icns from app/Resources/icon.png, st
                                          # from app/Resources/glyph.png (see the script)
 
 npm install                              # once, at the root: Skrapa + the release tooling
-npm run dev                              # .scripts/dev.mjs: the demo app and the site's dev server
+npm run dev                              # .scripts/dev.mjs: the demo app and the site's dev server;
+                                         # a change under app/ rebuilds and restarts the demo app
 npm run build                            # the site, into web/dist
 .scripts/version.mjs                     # print the version
 .scripts/version.mjs 0.2.0               # set it everywhere (see "Version" below)
 .scripts/version.mjs --check             # exit 1 if a generated copy disagrees; CI runs this
 .scripts/release.mjs --dry-run           # what the next release would be (CI cuts the real one)
 npm run typecheck                        # check .scripts/*.mjs JSDoc types
+npm run test:scripts                     # node --test: .scripts/**/*.test.mjs (release rules, plist, hook)
 git config core.hooksPath .scripts/hooks  # once per clone: Conventional Commit check on commit
 ```
 
@@ -126,8 +130,21 @@ strict Sendable checking) is the UI shell.
   synchronously before the panel is shown, so it never flashes at a stale size.
 - Placement: `MenuPanelController.placedFrame(of:)` judges the status item against
   the screen's full frame, not `visibleFrame` (with an auto-hiding menu bar, as in
-  every full-screen Space, the visible frame covers the menu bar strip). Until the
-  item is placed (just after launch) the menu hangs from the visible frame's top.
+  every full-screen Space, the visible frame covers the menu bar strip). The menu's top
+  meets the bottom of the menu bar, as a system menu's does: that's the status item's
+  *window*, which spans the bar, not its button, which is shorter (22pt in a 33pt bar
+  on a notched display). Until the item is placed (just after launch) the menu hangs
+  from the visible frame's top.
+- Colours come from the system, never constants, so they follow System Settings
+  (light/dark, accent colour, Increase Contrast, glass settings) live. From macOS 26 the
+  panel is an `NSGlassEffectView` (a live NSMenu's window is an NSGlassView); before
+  that, the `.menu` material plus a dark-mode tint. The highlight and the Copied
+  confirmation are the emphasized `.selection` material; text is AppKit's label colours
+  (`labelColor` resolved per colour scheme, since SwiftUI's mapping of the catalog
+  colour renders lighter). `app/scripts/demo.sh --snapshot` writes `compare-*.png`: our
+  menu and a real NSMenu at the same spot, light and dark, plain and highlighted. They
+  were measured to match exactly (background, highlight, header, text) and within 1/255
+  (separator); re-check them after changing anything in the popover's drawing.
 - Dismissal: resign-key with a 150 ms grace (transient key loss while a panel
   settles), a global mouse-down monitor for clicks in other apps, a Space change or
   another app activating, Escape. Status item clicks go through `MenuToggleGate`: an
@@ -155,6 +172,12 @@ button, then Done): only there is the account list a real `List` with `.onMove`,
 its native drag and drop (lifted row, insertion line, edge autoscroll), and that mode
 shows no text fields. The self-test asserts both halves. Synthetic clicks don't
 reproduce the delay, so test focus changes with a real mouse.
+
+Every section's content sits in the same card (`.settingsCard()`), spaced by
+`SettingsMetrics`. Account rows show their hide/edit/delete buttons only on hover,
+keyboard focus or with VoiceOver on; otherwise their icons are drawn `.clear`, keeping
+their space. Not `opacity(0)`: SwiftUI drops zero-opacity views from the accessibility
+tree, which hid the buttons from Voice Control, Switch Control and `a11y-test.sh`. The Manual form and the edit panel share `AccountFieldsGrid` (a label column).
 
 Settings opens with no text field focused (`SettingsWindowController` clears the
 first responder AppKit assigns), Edit focuses the Issuer field, and Import's file
@@ -187,13 +210,30 @@ picker is a `fileImporter` sheet on the Settings window, accepting any data file
   search source drops the stamp. `FaviconService` caches hits for the process
   lifetime and real misses for 10 minutes, never caches unreachable results, and
   shares in-flight lookups.
+- Every field that holds a secret (Secret in the edit panel and Manual, and the From URL
+  field, whose URL carries one) is a `SecretField`: a `SecureField` with an eye toggle.
+- `InstanceLock.acquire` returns nil only when another process holds the lock. A data
+  directory or lock file that can't be created throws, and the app shows an alert
+  before quitting; a lost lock quits quietly and opens Settings in the running copy.
 - Launching the app again while it runs opens Settings: `applicationShouldHandleReopen`
   for Finder/Spotlight/Dock, and a second process that loses the instance lock posts
   a distributed notification (object: the data directory) before quitting. In
   `--self-test`/`--snapshot` a lost lock exits 2 instead, so a test can't pass
   without running.
+- Export (General → Export Accounts…) writes one `otpauth://` URL per line, the format
+  Import reads, after an alert warning that the file holds every secret unencrypted.
+  `OTPAuthURL.make` is tested to round-trip through `parse`; icons, favicon URLs and
+  `hidden` aren't in the URL and are lost. The file is written with mode 0600 through
+  an `NSSavePanel` sheet (not `fileExporter`, which would pick its own permissions).
 - Saving an edit panel whose icon editor was never touched keeps the account's
   *current* icon (a backfill may have found one after the panel opened).
+- `AccountStore.save` writes the temp file itself and `F_FULLFSYNC`s it (and then the
+  directory) around the rename, so a power loss can't leave an empty `accounts.enc`.
+  A temp file left by a crash is unlinked first, so its mode is never inherited.
+- A copied code is cleared from the clipboard after `Clipboard.clearDelay` (60 s),
+  only if the pasteboard's `changeCount` hasn't moved: anything copied since stays.
+- Failed saves during icon lookups are logged (`os.Logger`, subsystem
+  `com.iambrian.menu-otp`, category `icons`), not shown: nobody is waiting on them.
 
 ### Demo mode and test hooks
 
@@ -203,6 +243,15 @@ beside the real app). `--self-test` and `--snapshot <dir>` are honoured only in 
 mode. Snapshots use `screencapture -l <windowNumber>` on the app's own on-screen
 windows. Offscreen rendering (`cacheDisplay`, `ImageRenderer`) misses SwiftUI/AppKit
 content.
+
+VoiceOver labels can't be checked from `--self-test`: SwiftUI builds accessibility
+elements for its own controls only once an outside assistive client asks, so the app
+walking its own tree sees just the AppKit-backed views. `app/scripts/a11y-test.sh`
+therefore starts the demo app (own data dir), opens Settings via a second launch, and
+runs `app/scripts/a11y-check.swift` against it with the `AXUIElement` API: named
+buttons, per-account row labels, headings, hidden icons, secure fields, and pressing
+Edit / Show secret / Manual the way VoiceOver does. It needs the terminal allowed under
+Privacy & Security → Accessibility (exit 3 if not), so it doesn't run in CI.
 
 ## The website
 
@@ -230,6 +279,7 @@ which keeps `skrapa.d.ts` and the output inside `web/` instead of at the reposit
   is named.
 - The screenshots in `web/assets/` come from
   `app/scripts/demo.sh --snapshot <dir> --real-icons`; some are crops.
+  `screenshot-settings.png` is `settings-full.png`, the window grown to its content.
 - Pages compile with `tsc --outDir .skrapa --rootDir .` **inside `web/`**, which Skrapa
   hard-codes. A page therefore can't import anything above `web/`, which is why the
   version the site shows is `web/version.json` rather than the root `package.json`.
@@ -248,8 +298,15 @@ and **never typed anywhere else**. Releases bump it automatically from the commi
 messages (next section); `.scripts/version.mjs <x.y.z>` sets it by hand when that's
 really wanted. Everything else derives from it:
 
-- The app reads its own bundle: `AppEnvironment.versionText` ("0.1.0 (57)") feeds the
-  footer at the bottom of Settings, and the standard About panel shows the same pair.
+- The app shows it in one place: the stock About panel (the menu's About row, or the
+  app menu while Settings is open), called with no options so everything comes from
+  the bundle: "Version 0.1.0 (57)", `NSHumanReadableCopyright` (copyright and license),
+  and `app/Resources/Credits.rtf` ("Made with ❤️ by Brian", linked), which `bundle.sh`
+  copies in. Regenerate the RTF with AppKit (`NSAttributedString` → `.rtf`) rather than
+  by hand: hand-written `\u` escapes for the emoji came out garbled.
+- The website's footer shows "v0.1.0 (57)" too: `web/build-number.ts` counts commits
+  up to the `v<version>` tag while the page renders, which is the number the release
+  was built with. Hence `fetch-depth: 0` in `deploy-web.yml`.
 - `CFBundleVersion` (the build number) is the git commit count, stamped by
   `app/scripts/bundle.sh` into the *built* bundle's plist only. The source plist's `1` is
   the fallback for a tree with no git history. Nobody bumps it.
@@ -289,7 +346,12 @@ pinned in the script.
   dependencies, pinned in `package-lock.json`. `release.sh` runs the local
   `node_modules/.bin` copy, never `npx --yes`: the release job holds a token that can
   push to `main` and builds the app people keep their 2FA secrets in, so nothing there
-  resolves a dependency at run time.
+  resolves a dependency at run time. Every `npm ci` passes `--ignore-scripts` (no
+  dependency has an install script, so it costs nothing).
+- **Actions** are pinned to commit SHAs with a `# vX.Y.Z` comment; `.github/dependabot.yml`
+  opens weekly `ci:`/`build:` PRs to bump them and the npm lockfile, which cut no release.
+- **Pull requests** run `.github/workflows/ci.yml`: version check, script typecheck and
+  tests, app tests, site build. Read-only; nothing is released or deployed.
 - **Bump size:** below 1.0.0 a breaking change bumps the minor version and everything
   else the patch. From 1.0.0 on it's major / minor (`feat`) / patch.
   `.scripts/release.mjs --release-as 1.0.0` chooses the version instead.
@@ -324,7 +386,8 @@ pinned in the script.
 - The release commit is itself a push to `main`. GitHub doesn't start workflows from
   pushes made with `GITHUB_TOKEN`; if that ever changes (a PAT), the rerun finds HEAD
   tagged and already published and only redeploys the site.
-- The build is the same as a local one: universal, ad-hoc signed, not notarized, no
+- The build is the same as a local one: universal, ad-hoc signed with the hardened
+  runtime (`codesign --options runtime`, no entitlements needed), not notarized, no
   secrets or certificates. `--self-test` and `--snapshot` are not run in CI.
 - `fetch-depth: 0` matters twice: the changelog is written from the commits since the
   last tag, and the build number is the commit count (a shallow clone counts 1).

@@ -26,6 +26,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             let window = NSWindow(contentViewController: hosting)
             window.title = "\(AppEnvironment.appName) Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            // An empty compact toolbar only for its height: the title bar is then 38pt
+            // like other apps' toolbar windows beside it, not a bare 28pt strip
+            window.toolbar = NSToolbar(identifier: "settings")
+            window.toolbarStyle = .unifiedCompact
             window.setContentSize(NSSize(width: 480, height: 600))
             window.contentMinSize = NSSize(width: 380, height: 400)
             window.isReleasedWhenClosed = false

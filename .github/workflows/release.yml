@@ -37,6 +37,8 @@ jobs:
     release:
         name: Test and release
         runs-on: macos-26
+        # A hung build otherwise holds the release queue for the 6-hour default
+        timeout-minutes: 45
         outputs:
             ref: ${{ steps.release.outputs.ref }}
         steps:
@@ -46,8 +48,12 @@ jobs:
             # a .dmg built from it. Only main may be released from.
             - name: Refuse to release from a branch other than main
               if: ${{ !inputs.tag && github.ref != 'refs/heads/main' }}
+              # Through env, never ${{ }} inside the script: a branch name is chosen by
+              # whoever pushed it and can hold shell syntax
+              env:
+                  REF: ${{ github.ref }}
               run: |
-                  echo "Releasing is only possible from main; this run is on ${{ github.ref }}." >&2
+                  echo "Releasing is only possible from main; this run is on $REF." >&2
                   echo "Re-run it on main, or give the tag input to build an existing tag." >&2
                   exit 1
 
@@ -56,13 +62,13 @@ jobs:
             # tags: the changelog is written from the commits since the last tag, and
             # app/scripts/bundle.sh stamps the commit count as the build number.
             - name: Checkout
-              uses: actions/checkout@v7
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   ref: ${{ inputs.tag || github.ref }}
                   fetch-depth: 0
 
             - name: Setup Node
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
               with:
                   node-version: '24'
 
@@ -89,14 +95,17 @@ jobs:
               run: .scripts/version.mjs --check
 
             # commit-and-tag-version, at the versions package-lock.json pins. This job
-            # can push to main, so nothing here resolves a dependency at run time.
+            # can push to main, so nothing here resolves a dependency at run time, and
+            # no package's install script runs while the push token is on disk.
             - name: Install release tooling
-              run: npm ci
+              run: npm ci --ignore-scripts
 
             # Before the version is cut, not after: a failure found later would leave
             # a release commit for something that doesn't work
             - name: Test
-              run: app/scripts/test.sh
+              run: |
+                  npm run test:scripts
+                  app/scripts/test.sh
 
             - name: Identify as the actions bot
               run: |

@@ -60,7 +60,8 @@ shares the repository's `package.json` with the release tooling, so `npm install
 at the root, then:
 
 ```sh
-npm run dev                     # the demo app and the site's dev server together
+npm run dev                     # the demo app and the site's dev server together; the app
+                                # restarts when anything under app/ changes
 npm run build                   # static HTML into web/dist
 npm run typecheck               # check the JSDoc types on .scripts/*.mjs
 .scripts/version.mjs            # print the version (.scripts/version.mjs 0.2.0 sets it by hand)

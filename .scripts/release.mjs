@@ -28,8 +28,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
-process.chdir(path.join(import.meta.dirname, '..'));
-
 /**
  * The locally installed tool, never `npx --yes`: this runs in a job holding a token that
  * can push to `main`, and it builds the app people keep their 2FA secrets in, so the
@@ -63,7 +61,7 @@ const CONFIG = '.scripts/release.config.json';
  *
  * @type {RegExp}
  */
-const RELEASABLE =
+export const RELEASABLE =
     /^(?:(?:feat|fix|perf)(?:\([^()]+\))?!?: |[a-z]+(?:\([^()]+\))?!: |BREAKING[ -]CHANGE: )/m;
 
 /**
@@ -89,12 +87,37 @@ function git(...args) {
 }
 
 /**
- * Prints one version's section of `CHANGELOG.md`, for use as GitHub release notes.
+ * One version's section of a changelog, for use as GitHub release notes.
  *
  * Runs from the version's own heading to the next version's, leaving the heading itself
  * out because a GitHub release already has a title. Headings look like
- * `## [0.2.0](compare-link) (date)`, or `## 0.1.0 (date)` for a first release, which is
- * why the version is unwrapped from any `[...]` around it.
+ * `## [0.2.0](compare-link) (date)` (`###` for a patch), or `## 0.1.0 (date)` for a first
+ * release, which is why the version is unwrapped from any `[...]` around it.
+ *
+ * @param {string} changelog The whole of `CHANGELOG.md`.
+ * @param {string} version The version whose section to return, without a `v`.
+ * @returns {string} The section, or `""` when the version has none.
+ */
+export function changelogSection(changelog, version) {
+    /** @type {string[]} */
+    const collected = [];
+    let printing = false;
+    for (const line of changelog.split('\n')) {
+        const heading = /^###? \[?([0-9][^\]\s]*)/.exec(line);
+        if (heading) {
+            if (printing) break;
+            if (heading[1] === version) {
+                printing = true;
+                continue;
+            }
+        }
+        if (printing) collected.push(line);
+    }
+    return collected.join('\n');
+}
+
+/**
+ * Prints one version's section of `CHANGELOG.md` ({@link changelogSection}).
  *
  * @param {string | undefined} version The version whose section to print, without a `v`.
  * @returns {number} A process exit code.
@@ -108,22 +131,7 @@ function notes(version) {
         console.error('CHANGELOG.md does not exist yet; the first release creates it.');
         return 1;
     }
-    const lines = fs.readFileSync('CHANGELOG.md', 'utf8').split('\n');
-    /** @type {string[]} */
-    const collected = [];
-    let printing = false;
-    for (const line of lines) {
-        const heading = /^###? \[?([0-9][^\]\s]*)/.exec(line);
-        if (heading) {
-            if (printing) break;
-            if (heading[1] === version) {
-                printing = true;
-                continue;
-            }
-        }
-        if (printing) collected.push(line);
-    }
-    console.log(collected.join('\n'));
+    console.log(changelogSection(fs.readFileSync('CHANGELOG.md', 'utf8'), version));
     return 0;
 }
 
@@ -200,4 +208,9 @@ function main(argv) {
     return result.status ?? 1;
 }
 
-process.exit(main(process.argv.slice(2)));
+// Run directly (rather than imported by its tests): behave as the CLI described above,
+// from the repository root, which every path here is relative to
+if (import.meta.main) {
+    process.chdir(path.join(import.meta.dirname, '..'));
+    process.exit(main(process.argv.slice(2)));
+}

@@ -51,14 +51,21 @@ final class SelfTest {
         let frame = menu.panel.frame
         check("menu width is within 220...460", (220...460).contains(frame.width))
         if let placed = MenuPanelController.placedFrame(of: app.statusItem) {
-            check("menu hangs 2pt under the status item", abs(frame.maxY - (placed.frame.minY - 2)) < 1.5)
+            check("menu hangs flush from the bottom of the menu bar, like a system menu",
+                  abs(frame.maxY - placed.menuBarBottom) < 0.5)
         }
         let visible = model.accounts.filter { !$0.hidden }
-        check("one row per visible account + separator, Settings, Quit", menu.rowsForTesting.count == visible.count + 3)
+        check("the menu opens with its name as a title", menu.rowsForTesting.first == MenuRow(kind: .title, label: AppEnvironment.appName))
+        check("title + separator, one row per visible account, separator, Settings, About, Quit",
+              menu.rowsForTesting.count == visible.count + 6)
+        let firstAccountRow = menu.rowsForTesting.firstIndex { if case .copy = $0.action { true } else { false } }
 
-        // Keyboard: ↓ then Return copies the first account
+        // Keyboard: ↓ then Return copies the first account. The menu opens under the
+        // status item, and if the pointer happens to rest there its hover has already
+        // highlighted a row; clear it so ↓ starts from nothing, as it does by keyboard.
+        menu.highlightForTesting(nil)
         menu.panel.sendEvent(key(125))
-        check("down arrow highlights the first row", menu.highlightedIndexForTesting == 0)
+        check("down arrow highlights the first account", menu.highlightedIndexForTesting == firstAccountRow)
         let before = Date()
         menu.panel.sendEvent(key(36))
         await settle()
@@ -69,6 +76,22 @@ final class SelfTest {
         check("menu shows the Copied confirmation", { if case .copied = menu.content { return true } else { return false } }())
         check("menu stays open after copying", menu.isVisible)
         check("last clicked is recorded", model.lastClicked?.identity == first.identity)
+
+        // Copied codes expire, but never take something the user copied since with them.
+        // On a private pasteboard with a short delay, so the real clipboard isn't involved.
+        let scratch = NSPasteboard(name: NSPasteboard.Name("com.iambrian.menu-otp.self-test"))
+        let savedDelay = Clipboard.clearDelay
+        Clipboard.clearDelay = 0.3
+        Clipboard.copy("123456", to: scratch)
+        try? await Task.sleep(for: .milliseconds(700))
+        check("a copied code is cleared from the clipboard after a while", scratch.string(forType: .string) == nil)
+        Clipboard.copy("123456", to: scratch)
+        scratch.clearContents()
+        scratch.setString("the user's own copy", forType: .string)
+        try? await Task.sleep(for: .milliseconds(700))
+        check("something copied since is left on the clipboard", scratch.string(forType: .string) == "the user's own copy")
+        Clipboard.clearDelay = savedDelay
+        scratch.releaseGlobally()
 
         // The pointer path: MenuHostingView's handlers hit-test the row frames SwiftUI
         // reports. The keyboard checks above never exercise it.
@@ -108,7 +131,8 @@ final class SelfTest {
         menu.toggle()
         await settle()
         check("a later click reopens it", menu.isVisible)
-        check("reopened menu starts with the Last clicked header", menu.rowsForTesting.first?.kind == .header)
+        check("reopened menu starts with the Last clicked header, under the title",
+              menu.rowsForTesting.first { $0.kind != .title && $0.kind != .separator }?.kind == .header)
         menu.toggle()
         await settle()
         check("clicking the status item again closes it", !menu.isVisible)
@@ -143,6 +167,7 @@ final class SelfTest {
         // A List holds clicks on text fields in its rows for the double-click interval
         check("Settings uses no List outside reorder mode", !containsTable(settings.window?.contentView))
         check("app is in the Dock while Settings is open", NSApp.activationPolicy() == .regular)
+        check("the From URL field (it holds a secret) is masked", count(NSSecureTextField.self, in: settings.window?.contentView) == 1)
         settings.close()
         await settle()
         check("closing Settings leaves the Dock", NSApp.activationPolicy() == .accessory)
@@ -162,6 +187,39 @@ final class SelfTest {
         check("Import's file picker is a sheet on the Settings window", settings.window?.attachedSheet != nil)
         if let window = settings.window, let sheet = window.attachedSheet { window.endSheet(sheet) }
         await settle()
+        settings.close()
+        await settle()
+
+        // Export writes secrets unencrypted: it warns first, and the warning isn't
+        // already the save panel
+        settings.initialState = .init(confirmExport: true)
+        settings.show()
+        for _ in 0..<30 where settings.window?.attachedSheet == nil {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        let exportSheet = settings.window?.attachedSheet
+        check("Export warns in a sheet before asking where to save", exportSheet != nil && !(exportSheet is NSSavePanel))
+        // Confirming must lead to a save panel that stays: attached to the closing
+        // warning instead of to Settings, it vanished along with it
+        let confirm = buttons(in: exportSheet?.contentView).first { $0.title == "Export…" }
+        check("the warning has an Export… button", confirm != nil)
+        confirm?.performClick(nil)
+        for _ in 0..<30 where !(settings.window?.attachedSheet is NSSavePanel) {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        await settle()
+        check("confirming opens the save panel on the Settings window, and it stays",
+              settings.window?.attachedSheet is NSSavePanel && settings.window?.attachedSheet?.isVisible == true)
+        if let window = settings.window, let sheet = window.attachedSheet { window.endSheet(sheet, returnCode: .cancel) }
+        await settle()
+        settings.close()
+        await settle()
+
+        settings.initialState = .init(editing: model.accounts.first?.identity, addTab: .manual)
+        settings.show()
+        await settle()
+        // Edit panel's Secret and Manual's Secret; From URL isn't showing
+        check("every secret field is masked", count(NSSecureTextField.self, in: settings.window?.contentView) == 2)
         settings.close()
         await settle()
         settings.initialState = .init()
@@ -185,6 +243,17 @@ final class SelfTest {
         check("reopening the app opens Settings", settings.window?.isVisible == true)
         settings.close()
         await settle()
+    }
+
+    private func count<T: NSView>(_ type: T.Type, in view: NSView?) -> Int {
+        guard let view else { return 0 }
+        return (view is T ? 1 : 0) + view.subviews.reduce(0) { $0 + count(type, in: $1) }
+    }
+
+    private func buttons(in view: NSView?) -> [NSButton] {
+        guard let view else { return [] }
+        let own: [NSButton] = (view as? NSButton).map { [$0] } ?? []
+        return own + view.subviews.flatMap { buttons(in: $0) }
     }
 
     private func containsTable(_ view: NSView?) -> Bool {

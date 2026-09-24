@@ -52,6 +52,29 @@ private let sample = [
     #expect(!FileManager.default.fileExists(atPath: url.path + ".tmp"))
 }
 
+/// A crash between writing the temp file and renaming it leaves the temp file behind,
+/// possibly with a looser mode. The next save must neither inherit that mode nor fail.
+@Test func leftoverTempFileNeitherBlocksNorLoosensTheNextSave() throws {
+    let url = temporaryDirectory().appendingPathComponent("accounts.enc")
+    FileManager.default.createFile(
+        atPath: url.path + ".tmp", contents: Data("half a save".utf8), attributes: [.posixPermissions: 0o644]
+    )
+    let key = InMemoryKeyProvider()
+    try AccountStore(fileURL: url, keyProvider: key).save(sample)
+    #expect(try AccountStore(fileURL: url, keyProvider: key).load().accounts == sample)
+    let perms = try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+    #expect(perms == 0o600)
+    #expect(!FileManager.default.fileExists(atPath: url.path + ".tmp"))
+}
+
+@Test func saveReplacesAnEarlierSave() throws {
+    let url = temporaryDirectory().appendingPathComponent("accounts.enc")
+    let key = InMemoryKeyProvider()
+    try AccountStore(fileURL: url, keyProvider: key).save(sample)
+    try AccountStore(fileURL: url, keyProvider: key).save([sample[0]])
+    #expect(try AccountStore(fileURL: url, keyProvider: key).load().accounts == [sample[0]])
+}
+
 @Test func undecryptableFileIsMovedAsideNotDeleted() throws {
     let dir = temporaryDirectory()
     let url = dir.appendingPathComponent("accounts.enc")
@@ -95,11 +118,18 @@ private let sample = [
 
 @Test func instanceLockIsExclusiveUntilReleased() throws {
     let path = temporaryDirectory().appendingPathComponent("instance.lock")
-    var first: InstanceLock? = InstanceLock(path: path)
+    var first: InstanceLock? = try InstanceLock.acquire(at: path)
     #expect(first != nil)
-    #expect(InstanceLock(path: path) == nil)
+    #expect(try InstanceLock.acquire(at: path) == nil)
     first = nil
-    #expect(InstanceLock(path: path) != nil)
+    #expect(try InstanceLock.acquire(at: path) != nil)
+}
+
+/// A lock file that can't be opened is an error, not "already running": the app must
+/// say what went wrong instead of quitting silently.
+@Test func instanceLockThatCantBeOpenedThrows() {
+    let path = temporaryDirectory().appendingPathComponent("missing/instance.lock")
+    #expect(throws: InstanceLockError.self) { try InstanceLock.acquire(at: path) }
 }
 
 /// Touches the real login Keychain with a throwaway service name. Off by default:

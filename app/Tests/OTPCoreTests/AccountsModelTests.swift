@@ -227,6 +227,23 @@ private let icon = FaviconResult(icon: "data:image/png;base64,AA==", domain: "gi
     #expect(try h.reloaded().count == 1)
 }
 
+@MainActor @Test func exportWritesAnOwnerOnlyFileThatImports() throws {
+    let h = ModelHarness()
+    try h.model.add(gh)
+    try h.model.add(aws)
+    let file = h.dir.appendingPathComponent("export.txt")
+    // An existing, world-readable file at the destination is replaced, not reused
+    FileManager.default.createFile(atPath: file.path, contents: Data("old".utf8), attributes: [.posixPermissions: 0o644])
+    try h.model.export(to: file)
+
+    let mode = try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? Int
+    #expect(mode == 0o600)
+    var reimported: [Account] = []
+    let summary = reimported.importLines(try String(contentsOf: file, encoding: .utf8))
+    #expect(summary.text == "2 added")
+    #expect(reimported == [gh, aws])
+}
+
 @MainActor @Test func autoFaviconFillsIconWithoutRecordingMisses() async throws {
     let h = ModelHarness()
     h.answers["GitHub"] = icon

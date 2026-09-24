@@ -43,6 +43,35 @@ public enum OTPAuthURL {
         return Account(account: account, secret: secret, issuer: issuer)
     }
 
+    /// The standard Key URI form, `otpauth://totp/Issuer:account?secret=...&issuer=...`,
+    /// built so that `parse` gives back the same issuer, account and secret.
+    ///
+    /// `parse` splits the decoded label at its first colon, so escaping a colon
+    /// doesn't help. An issuer containing one is left out of the label (the `issuer`
+    /// parameter carries it), and an account containing one gets an empty issuer
+    /// before it, so the split lands in front of the account instead of inside it.
+    public static func make(_ account: Account) -> String {
+        let labelIssuer = account.issuer.contains(":") ? "" : account.issuer
+        var label = encode(account.account)
+        if !labelIssuer.isEmpty || account.account.contains(":") {
+            label = "\(encode(labelIssuer)):\(label)"
+        }
+        var url = "otpauth://totp/\(label)?secret=\(encode(account.secret))"
+        if !account.issuer.isEmpty { url += "&issuer=\(encode(account.issuer))" }
+        return url
+    }
+
+    /// Percent-encodes everything but RFC 3986's unreserved characters: that covers
+    /// the label's `:` and `/`, the query's `&`, `=` and `#`, and `+`, which the
+    /// query reads as a space.
+    private static func encode(_ s: String) -> String {
+        s.addingPercentEncoding(withAllowedCharacters: unreserved) ?? s
+    }
+
+    private static let unreserved = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    )
+
     /// URLSearchParams semantics: `+` means space, and the first occurrence of a
     /// key wins.
     private static func queryParameters(_ query: String?) -> [String: String] {

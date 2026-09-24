@@ -95,6 +95,13 @@ extension Array where Element == Account {
         return summary
     }
 
+    /// One otpauth:// URL per line, in list order, hidden accounts included: the
+    /// format `importLines` reads, and one other authenticator apps accept. Icons,
+    /// favicon URLs and the hidden flag have no place in the URL and aren't kept.
+    public func exportLines() -> String {
+        map { OTPAuthURL.make($0) + "\n" }.joined()
+    }
+
     /// Records a favicon lookup's outcome on the account with `identity`, if it still
     /// exists and still has no icon. A hit sets the icon (and the URL, if none was
     /// set) and clears any miss marker. A miss stamps `iconCheckedAt` only when

@@ -63,9 +63,15 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 if BUILD="$(git rev-list --count HEAD 2>/dev/null)"; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$APP/Contents/Info.plist"
 fi
-cp Resources/AppIcon.icns Resources/StatusIcon.png Resources/StatusIcon@2x.png "$APP/Contents/Resources/"
+# Credits.rtf is read by the standard About panel on its own (the "Made with" credit)
+cp Resources/AppIcon.icns Resources/StatusIcon.png Resources/StatusIcon@2x.png Resources/Credits.rtf \
+    "$APP/Contents/Resources/"
 
 # Ad-hoc signature: not a Developer ID and not notarized. Gatekeeper still blocks
 # the first launch of a downloaded copy (right-click -> Open, or strip quarantine).
-codesign --force --sign - "$APP"
+# With the hardened runtime: without it, DYLD_INSERT_LIBRARIES could load code into
+# the process the Keychain trusts with the accounts key, and read it without a prompt.
+# The app needs none of the exceptions (no JIT, no unsigned libraries), so no
+# entitlements file.
+codesign --force --options runtime --sign - "$APP"
 echo "$APP"

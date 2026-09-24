@@ -99,6 +99,18 @@ private typealias F = ImageFixtures
     #expect(F.rgba(image, 2, 2)[3] == 0)
 }
 
+/// A large image is never decoded at full size: a small file can declare enormous
+/// dimensions, and a full decode of 30000x30000 would need about 3.6 GB.
+@Test func largeImagesDecodeAsAThumbnail() throws {
+    let image = try #require(IconImage.decode(F.png(size: 512, red: 0, green: 1, blue: 0)))
+    #expect(image.width == IconImage.maxDecodedSize && image.height == IconImage.maxDecodedSize)
+    let url = try #require(IconImage.dataURL(fromImageData: F.png(size: 512, red: 0, green: 1, blue: 0)))
+    let icon = try #require(F.image(fromDataURL: url))
+    #expect(icon.width == 32 && F.rgba(icon, 16, 16) == [0, 255, 0, 255])
+    // Only ever scaled down
+    #expect(IconImage.decode(F.png(size: 16, red: 0, green: 1, blue: 0))?.width == 16)
+}
+
 @Test func dataURLRejectsNonImages() {
     #expect(IconImage.dataURL(fromImageData: Data("<html>nope</html>".utf8)) == nil)
     #expect(IconImage.dataURL(fromImageData: Data()) == nil)

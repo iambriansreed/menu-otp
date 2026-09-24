@@ -6,42 +6,50 @@ private let a = Account(account: "jane", secret: "ABCD", issuer: "GitHub", icon:
 private let b = Account(account: "root", secret: "ABCD", issuer: "AWS", hidden: true)
 private let c = Account(account: "me", secret: "ABCD", issuer: "")
 
-@Test func rowsListVisibleAccountsThenSettingsAndQuit() {
+@Test func rowsListTitleThenVisibleAccountsThenSettingsAboutAndQuit() {
     let rows = MenuRows.build(accounts: [a, b, c], lastClicked: nil, appName: "Menu OTP")
     #expect(rows == [
+        MenuRow(kind: .title, label: "Menu OTP"),
+        MenuRow(kind: .separator),
         MenuRow(kind: .item, label: "GitHub: jane", action: .copy(a.identity), icon: "🐙"),
         MenuRow(kind: .item, label: "me", action: .copy(c.identity)),
         MenuRow(kind: .separator),
         MenuRow(kind: .item, label: "Menu OTP Settings...", action: .settings),
+        MenuRow(kind: .item, label: "About Menu OTP", action: .about),
         MenuRow(kind: .item, label: "Quit Menu OTP", action: .quit, accelerator: "⌘Q"),
     ])
 }
 
-@Test func lastClickedHeaderComesFirst() {
+@Test func lastClickedHeaderComesFirstUnderTheTitle() {
     let rows = MenuRows.build(accounts: [a], lastClicked: a, appName: "Menu OTP")
-    #expect(rows.first == MenuRow(kind: .header, label: "Last clicked: GitHub: jane"))
+    #expect(rows[2] == MenuRow(kind: .header, label: "Last clicked: GitHub: jane"))
+}
+
+@Test func titleIsNotSelectable() {
+    #expect(!MenuRow(kind: .title, label: "Menu OTP").isSelectable)
 }
 
 @Test func emptyListOffersFirstAccountButAllHiddenDoesNot() {
     let empty = MenuRows.build(accounts: [], lastClicked: nil, appName: "Menu OTP")
-    #expect(empty.first == MenuRow(kind: .item, label: "Add Your First Account...", action: .settings))
+    #expect(empty[2] == MenuRow(kind: .item, label: "Add Your First Account...", action: .settings))
+    // Nothing between the title's separator and Settings: one separator, not two
     let allHidden = MenuRows.build(accounts: [b], lastClicked: nil, appName: "Menu OTP")
-    #expect(allHidden.first?.kind == .separator)
+    #expect(allHidden.map(\.kind) == [.title, .separator, .item, .item, .item])
 }
 
 @Test func selectionWrapsOverSelectableRowsOnly() {
     let rows = MenuRows.build(accounts: [a, c], lastClicked: a, appName: "Menu OTP")
-    // header(0) a(1) c(2) sep(3) settings(4) quit(5)
+    // title(0) sep(1) header(2) a(3) c(4) sep(5) settings(6) about(7) quit(8)
     var sel = MenuSelection(rows: rows)
-    #expect(sel.selectable == [1, 2, 4, 5])
+    #expect(sel.selectable == [3, 4, 6, 7, 8])
     sel.move(1)
-    #expect(sel.active == 1)
+    #expect(sel.active == 3)
     sel.move(-1)
-    #expect(sel.active == 5)
+    #expect(sel.active == 8)
     sel.move(1)
-    #expect(sel.active == 1)
+    #expect(sel.active == 3)
     sel.move(1); sel.move(1)
-    #expect(sel.active == 4)
+    #expect(sel.active == 6)
 }
 
 @Test func selectionUpFromNothingStartsAtBottom() {
@@ -52,11 +60,13 @@ private let c = Account(account: "me", secret: "ABCD", issuer: "")
 
 @Test func hoverIgnoresNonSelectableRows() {
     var sel = MenuSelection(rows: MenuRows.build(accounts: [a], lastClicked: a, appName: "X"))
-    sel.hover(1)
-    #expect(sel.active == 1)
-    sel.hover(0)
+    sel.hover(3)
+    #expect(sel.active == 3)
+    sel.hover(0) // the title
     #expect(sel.active == nil)
-    sel.hover(1); sel.hover(nil)
+    sel.hover(2) // the Last clicked header
+    #expect(sel.active == nil)
+    sel.hover(3); sel.hover(nil)
     #expect(sel.active == nil)
 }
 

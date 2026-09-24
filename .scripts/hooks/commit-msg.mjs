@@ -71,7 +71,7 @@ const ALLOWED_PREFIXES = ['Merge ', 'Revert "', 'fixup! ', 'squash! ', 'amend! '
  * @param {string} message The full contents of the commit message file.
  * @returns {string} The subject, or `""` for an empty message.
  */
-function subjectOf(message) {
+export function subjectOf(message) {
     for (const line of message.split('\n')) {
         if (line.startsWith('#')) continue;
         if (line.trim() === '') continue;
@@ -86,7 +86,7 @@ function subjectOf(message) {
  * @param {string} subject The commit's subject line.
  * @returns {boolean} True when it is conventional, or one of git's own.
  */
-function isAcceptable(subject) {
+export function isAcceptable(subject) {
     if (ALLOWED_PREFIXES.some((prefix) => subject.startsWith(prefix))) return true;
     return CONVENTIONAL.test(subject);
 }
@@ -140,4 +140,7 @@ function main(argv) {
     return 1;
 }
 
-process.exit(main(process.argv.slice(2)));
+// Run by git (rather than imported by its tests)
+if (import.meta.main) {
+    process.exit(main(process.argv.slice(2)));
+}

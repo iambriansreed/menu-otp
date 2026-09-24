@@ -22,11 +22,25 @@ public enum IconImage {
         ICO.isICO(data) ? ICO.decode(data) : imageIO(data)
     }
 
+    /// Twice the icon size, so `resized` still has pixels to average when it scales down.
+    static let maxDecodedSize = size * 2
+
+    /// Decodes as a thumbnail no larger than `maxDecodedSize`, never at full size. The
+    /// data comes off the network, and a small file can declare enormous dimensions:
+    /// a full decode of a 30000x30000 PNG needs about 3.6 GB. ImageIO scales while it
+    /// decodes, so memory stays small whatever the header says. Smaller images aren't
+    /// scaled up.
     static func imageIO(_ data: Data) -> CGImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               CGImageSourceGetCount(source) > 0
         else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        let options: [CFString: Any] = [
+            // Always from the image itself: an embedded thumbnail can be any size, or stale
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDecodedSize,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
     /// Aspect-fit into 32x32 with high-quality interpolation. (The Electron app

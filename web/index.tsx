@@ -1,4 +1,5 @@
 import { GitHubLink, REPO_URL } from './components/github-link';
+import { SiteFooter } from './components/site-footer';
 // The app's version: a generated copy of CFBundleShortVersionString in
 // app/Resources/Info.plist, kept in step by .scripts/version.mjs and checked by CI before
 // every deploy, so it's never typed here. The badges beside it show GitHub's latest
@@ -47,9 +48,9 @@ export function Page(): Skrapa.Page {
                 <img
                     class="screenshot screenshot-hero"
                     src="screenshot-menu.png"
-                    alt="The Menu OTP menu listing accounts with their service icons, with GitHub highlighted"
+                    alt="The Menu OTP menu: its title, then accounts with their service icons, with GitHub highlighted"
                     width="353"
-                    height="407"
+                    height="484"
                 />
             </section>
 
@@ -162,6 +163,11 @@ export function Page(): Skrapa.Page {
                             already chose. A secret that isn't valid base32 is refused when you enter
                             it, rather than failing later when you copy a code.
                         </p>
+                        <p>
+                            Secrets are masked as you type or edit them, and so is the{' '}
+                            <strong>From URL</strong> field, since the URL contains the secret. Click
+                            the eye button beside a field to see what's in it.
+                        </p>
 
                         <h3>Copying a code</h3>
                         <p>
@@ -184,7 +190,8 @@ export function Page(): Skrapa.Page {
                             With the menu open, <kbd>Up Arrow</kbd> and <kbd>Down Arrow</kbd> move the
                             highlight, <kbd>Return</kbd> or <kbd>Space</kbd> copies, and <kbd>Esc</kbd>{' '}
                             closes it. <kbd>Command-Q</kbd> quits, or use the <strong>Quit Menu OTP</strong>{' '}
-                            item at the bottom of the menu.
+                            item at the bottom of the menu. <strong>About Menu OTP</strong>, just above it,
+                            shows the version and build number and the license.
                         </p>
 
                         <h3>Icons</h3>
@@ -196,7 +203,8 @@ export function Page(): Skrapa.Page {
                             an account has no icon.
                         </p>
                         <p>
-                            To fix a wrong or missing icon, click <strong>Edit</strong> on the account.
+                            To fix a wrong or missing icon, point at the account in Settings and click
+                            its pencil button.
                             With <strong>Favicon</strong> selected, type the service's website and the
                             icon is looked up as you type. Choose <strong>Emoji</strong> to open the
                             macOS emoji picker instead.
@@ -204,9 +212,9 @@ export function Page(): Skrapa.Page {
                         <img
                             class="screenshot"
                             src="screenshot-edit.png"
-                            alt="An account open for editing, with its issuer, account name, secret, and favicon website fields"
-                            width="428"
-                            height="141"
+                            alt="An account open for editing: labelled issuer, account, masked secret and icon fields, with Cancel and Save"
+                            width="434"
+                            height="156"
                             loading="lazy"
                             decoding="async"
                         />
@@ -218,10 +226,10 @@ export function Page(): Skrapa.Page {
                         <h3>Organizing</h3>
                         <p>
                             Click <strong>Reorder</strong> above your accounts, drag them into the order
-                            you want the menu to show them, then click <strong>Done</strong>. The eye
-                            button hides an account from the menu; it stays in Settings marked{' '}
-                            <strong>Hidden</strong>. <strong>Edit</strong> changes an account's details
-                            and <strong>×</strong> deletes it, after asking.
+                            you want the menu to show them, then click <strong>Done</strong>. Point at
+                            an account to show its buttons: the eye hides it from the menu (it stays in
+                            Settings marked <strong>Hidden</strong>), the pencil edits it, and the trash
+                            deletes it, after asking.
                         </p>
                         <img
                             class="screenshot"
@@ -233,13 +241,35 @@ export function Page(): Skrapa.Page {
                             decoding="async"
                         />
 
-                        <h3>Getting around</h3>
+                        <h3>General</h3>
                         <p>
-                            Turn on <strong>Open at login</strong> under <strong>General</strong> in
-                            Settings to start Menu OTP with your Mac. It lives in the menu bar and only
-                            appears in the Dock while Settings is open. If its menu bar icon is ever out
-                            of reach, hidden behind the notch for example, open Menu OTP again from
-                            Finder or Spotlight to bring up Settings.
+                            Turn on <strong>Open at login</strong> to start Menu OTP with your Mac. It
+                            lives in the menu bar and only appears in the Dock while Settings is open.
+                            If its menu bar icon is ever out of reach, hidden behind the notch for
+                            example, open Menu OTP again from Finder or Spotlight to bring up Settings.
+                        </p>
+                        <img
+                            class="screenshot"
+                            src="screenshot-general.png"
+                            alt="The General section of Settings: an Open at login checkbox and an Export Accounts button"
+                            width="460"
+                            height="73"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <p>
+                            <strong>Export Accounts...</strong> saves every account to a text file,
+                            named <code>menu_otp_export.txt</code> unless you choose another name, with
+                            one <code>otpauth://</code> URL per line. That's the format{' '}
+                            <strong>Import File</strong> reads, and one most authenticator apps
+                            accept, so it works as a backup or for moving to another Mac. Icons and
+                            hidden settings aren't included.
+                        </p>
+                        <p>
+                            The file holds your secrets unencrypted, so Menu OTP asks before writing
+                            it. Anyone who can read it can generate your codes. It's saved readable by
+                            your user account only, but keep it somewhere safe and delete it when
+                            you're done.
                         </p>
 
                         <h3>Privacy</h3>
@@ -269,26 +299,16 @@ export function Page(): Skrapa.Page {
                     <img
                         class="screenshot"
                         src="screenshot-settings.png"
-                        alt="The Menu OTP Settings window listing accounts with icons, one marked Hidden, above the Add Account form"
+                        alt="The Menu OTP Settings window: accounts with icons, one marked Hidden, then the Add Account form, then General with Open at login and Export Accounts"
                         width="480"
-                        height="583"
+                        height="776"
                         loading="lazy"
                         decoding="async"
                     />
                 </div>
             </section>
 
-            <footer>
-                <p>
-                    <a href={REPO_URL} target="_blank" rel="noopener">
-                        GitHub
-                    </a>{' '}
-                    · Built with{' '}
-                    <a href="https://skrapa.iambrian.com" target="_blank" rel="noopener">
-                        Skrapa
-                    </a>
-                </p>
-            </footer>
+            <SiteFooter />
         </>
     );
 }

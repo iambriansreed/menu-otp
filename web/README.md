@@ -47,4 +47,6 @@ root:
 app/scripts/demo.sh --snapshot web/assets --real-icons
 ```
 
-`screenshot-copied.png` and `screenshot-edit.png` are crops of those.
+`screenshot-settings.png` is `settings-full.png` (the whole window, down to General).
+`screenshot-copied.png`, `screenshot-edit.png`, `screenshot-general.png` (from
+`settings-full.png`) and `screenshot-reorder.png` are crops of those.

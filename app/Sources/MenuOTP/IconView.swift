@@ -10,7 +10,14 @@ struct IconView: View {
     var placeholderSeed: String?
     var size: CGFloat = 18
 
+    /// Decorative wherever it's drawn: the account's name is always beside it, and
+    /// VoiceOver would otherwise read a letter placeholder or an emoji's name
+    /// ("octopus") before every account.
     var body: some View {
+        content.accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var content: some View {
         switch AccountIcon(icon) {
         case .image(let data):
             if let image = NSImage(data: data) {

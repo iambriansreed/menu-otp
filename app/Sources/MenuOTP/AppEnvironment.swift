@@ -5,18 +5,6 @@ struct AppEnvironment {
     static let appName = "Menu OTP"
     static let bundleID = "com.iambrian.menu-otp"
 
-    /// "0.1.0 (57)", read from the running bundle so it is never typed in Swift: the
-    /// version is CFBundleShortVersionString in app/Resources/Info.plist (the one place it
-    /// is set; see .scripts/version.mjs), and the build number is stamped into the built
-    /// bundle by app/scripts/bundle.sh. Nil when run outside a bundle (`swift run`), which
-    /// has no Info.plist to read.
-    static var versionText: String? {
-        let info = Bundle.main.infoDictionary
-        guard let version = info?["CFBundleShortVersionString"] as? String else { return nil }
-        guard let build = info?["CFBundleVersion"] as? String else { return version }
-        return "\(version) (\(build))"
-    }
-
     /// Set by `MENU_OTP_DEMO_FILE` (app/scripts/demo.sh). Demo mode loads accounts from
     /// that file of otpauth:// URLs, keeps data in a temp directory with a throwaway
     /// in-memory key, and never touches the real store, the Keychain or the login

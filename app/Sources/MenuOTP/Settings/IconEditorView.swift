@@ -28,6 +28,7 @@ struct IconEditorView: View {
                     HStack(spacing: 2) {
                         Text("https://").foregroundStyle(.secondary)
                         TextField("example.com", text: Binding(get: { editor.urlText }, set: editor.setURLText))
+                            .accessibilityLabel("Favicon website")
                     }
                     Button {
                         Task { await editor.find() }
@@ -39,16 +40,19 @@ struct IconEditorView: View {
                         }
                     }
                     .help("Find favicon")
+                    .accessibilityLabel(editor.isSearching ? "Finding favicon" : "Find favicon")
                     .disabled(editor.isSearching)
                 case .emoji:
                     TextField("🙂", text: Binding(get: { editor.emojiText }, set: editor.setEmoji))
                         .frame(width: 44)
                         .multilineTextAlignment(.center)
                         .focused($emojiFocused)
+                        .accessibilityLabel("Emoji")
                     Button(action: openEmojiPicker) {
                         Image(systemName: "face.smiling")
                     }
                     .help("Open the emoji picker")
+                    .accessibilityLabel("Open the emoji picker")
                     Spacer(minLength: 0)
                 }
 
@@ -57,6 +61,7 @@ struct IconEditorView: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Clear icon")
+                .accessibilityLabel("Clear icon")
             }
             if !editor.status.isEmpty {
                 Text(editor.status).font(.caption).foregroundStyle(.secondary)

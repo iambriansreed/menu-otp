@@ -14,7 +14,10 @@ final class MenuPanel: NSPanel {
     /// Sees every keyDown before normal dispatch; returns true when it handled it.
     var keyHandler: ((NSEvent) -> Bool)?
 
-    let effectView = NSVisualEffectView()
+    /// Where the menu content goes: inside the glass (macOS 26+) or the material.
+    let contentHost = NSView()
+
+    private let effectView = NSVisualEffectView()
 
     /// Sits over the material and under the menu content; see the tint note in init().
     ///
@@ -59,7 +62,19 @@ final class MenuPanel: NSPanel {
         isReleasedWhenClosed = false
         animationBehavior = .none
 
-        // The blurred material menus are drawn with
+        // From macOS 26 a real menu is Liquid Glass: its window is an NSGlassView holding
+        // the items (dumped from a live NSMenu in this process), so this uses the public
+        // NSGlassEffectView. Its colours were measured against a real menu opened at the
+        // same spot (app/scripts/demo.sh --snapshot writes compare-*.png for both).
+        if #available(macOS 26, *) {
+            let glass = NSGlassEffectView()
+            glass.cornerRadius = Self.cornerRadius
+            glass.contentView = contentHost
+            contentView = glass
+            return
+        }
+
+        // Before macOS 26: the blurred material menus were drawn with
         effectView.material = .menu
         effectView.blendingMode = .behindWindow
         effectView.state = .active
@@ -80,6 +95,9 @@ final class MenuPanel: NSPanel {
         tintView.frame = effectView.bounds
         tintView.autoresizingMask = [.width, .height]
         effectView.addSubview(tintView)
+        contentHost.frame = effectView.bounds
+        contentHost.autoresizingMask = [.width, .height]
+        effectView.addSubview(contentHost)
     }
 
     override var canBecomeKey: Bool { true }
