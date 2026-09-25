@@ -53,6 +53,9 @@ final class Snapshots {
         }
 
         menu.show()
+        // The pointer may happen to rest where the menu opens; its hover would
+        // highlight a row in what should be the untouched menu
+        menu.highlightForTesting(nil)
         await settle()
         capture(menu.panel, "menu")
 
@@ -60,6 +63,14 @@ final class Snapshots {
         let accountRows = menu.rowsForTesting.indices.filter { index in
             if case .copy = menu.rowsForTesting[index].action { return true }
             return false
+        }
+
+        // One frame per account with its row highlighted: the website's hero animation
+        // moves a pointer down the menu through these (menu-row-0 is the first account)
+        for (n, row) in accountRows.enumerated() {
+            menu.highlightForTesting(row)
+            await settle()
+            capture(menu.panel, "menu-row-\(n)")
         }
 
         // The second account (GitHub in the demo data)
@@ -75,7 +86,9 @@ final class Snapshots {
             capture(menu.panel, "menu-last-row")
         }
 
-        if let first = accountRows.first { menu.activate(index: first) }
+        // The second account, the one menu-highlighted shows and the website's hero
+        // animation clicks, so its "Copied" frame follows on from the highlight
+        if let clicked = accountRows.dropFirst().first ?? accountRows.first { menu.activate(index: clicked) }
         await settle()
         capture(menu.panel, "menu-copied")
         menu.hide()

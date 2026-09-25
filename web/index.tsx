@@ -1,9 +1,9 @@
 import { GitHubLink, REPO_URL } from './components/github-link';
+import { HeroDemo } from './components/hero-demo';
 import { SiteFooter } from './components/site-footer';
 // The app's version: a generated copy of CFBundleShortVersionString in
 // app/Resources/Info.plist, kept in step by .scripts/version.mjs and checked by CI before
-// every deploy, so it's never typed here. The badges beside it show GitHub's latest
-// release, which trails this by the few minutes a release build takes.
+// every deploy, so it's never typed here.
 import { version } from './version.json';
 
 const RELEASE_URL = `${REPO_URL}/releases/latest`;
@@ -28,116 +28,92 @@ export function Page(): Skrapa.Page {
             </header>
 
             <section class="hero">
-                <div class="logo" role="img" aria-label="Menu OTP logo"></div>
-                <h1>Menu OTP</h1>
+                <h1>Two-factor codes in your menu bar</h1>
                 <p class="tagline">
-                    Two-factor codes in your Mac's menu bar, in a small native app. Click an account
-                    and its current code is copied to the clipboard.
+                    Menu OTP is a small, native Mac app. Click an account and its current code is
+                    copied to the clipboard.
                 </p>
-                <div class="cta-row">
-                    <a class="btn btn-primary" href={RELEASE_URL}>
-                        Download for macOS
-                    </a>
-                    <a class="btn btn-secondary" href="#download">
-                        Install instructions
-                    </a>
-                </div>
-                <img
-                    class="badge"
-                    src="https://img.shields.io/github/v/release/iambriansreed/menu-otp?label=latest"
-                    alt="Latest release"
-                    width="105"
-                    height="20"
-                />
-                <img
-                    class="screenshot screenshot-hero"
-                    src="screenshot-menu.png"
-                    alt="The Menu OTP menu: its title, then accounts with their service icons, with GitHub highlighted"
-                    width="353"
-                    height="484"
-                />
+                <HeroDemo />
             </section>
 
-            <section class="download" id="download">
-                <h2>Download and install</h2>
-                <p class="lede">Requires macOS 14 or later, on Apple silicon or Intel.</p>
-                <div class="cta-row">
+
+            <section class="install" id="install">
+                <h2>Install</h2>
+                <div class="tabs" role="tablist" aria-label="How to install">
+                    <button class="tab" type="button" role="tab" id="tab-bash" aria-controls="panel-bash" aria-selected="true">
+                        Bash
+                    </button>
+                    <button class="tab" type="button" role="tab" id="tab-manual" aria-controls="panel-manual" aria-selected="false" tabindex="-1">
+                        Manual
+                    </button>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-bash" aria-labelledby="tab-bash">
+                    <div class="code-block">
+                        <pre>
+                            <code>{INSTALL_COMMAND}</code>
+                        </pre>
+                        <button class="copy-btn" type="button">
+                            Copy
+                        </button>
+                    </div>
+                    <p class="sub">
+                        Downloads the latest release, checks it, moves it to Applications, clears the
+                        quarantine flag, and opens it. Read{' '}
+                        <a href={INSTALL_SCRIPT_URL} target="_blank" rel="noopener">
+                            the script
+                        </a>{' '}
+                        first if you like; it's short. Run it again any time to update.
+                    </p>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-manual" aria-labelledby="tab-manual" hidden>
                     <a class="btn btn-primary" href={RELEASE_URL}>
                         Download Menu OTP {version}
                     </a>
-                    <img
-                        class="badge"
-                        src="https://img.shields.io/github/v/release/iambriansreed/menu-otp?label=latest"
-                        alt="Latest release"
-                        width="105"
-                        height="20"
-                    />
-                </div>
-                <p class="lede install-lede">
-                    Or install from Terminal in one step. It downloads the latest release, checks it,
-                    moves it to Applications, clears the quarantine flag, and opens it:
-                </p>
-                <div class="code-block">
-                    <pre>
-                        <code>{INSTALL_COMMAND}</code>
-                    </pre>
-                    <button class="copy-btn" type="button">
-                        Copy
-                    </button>
-                </div>
-                <p class="sub">
-                    Read{' '}
-                    <a href={INSTALL_SCRIPT_URL} target="_blank" rel="noopener">
-                        the script
-                    </a>{' '}
-                    first if you like; it's short. Run it
-                    again any time to update.
-                </p>
-                <div class="prose">
-                    <p>To install by hand instead:</p>
-                    <ol>
-                        <li>
-                            Open the downloaded <code>.dmg</code> and drag Menu OTP into Applications.
-                        </li>
-                        <li>
-                            The app isn't notarized by Apple, so macOS blocks it the first time. Try
-                            these approaches:
-                            <ul>
-                                <li>
-                                    <strong>Terminal method (any macOS):</strong> Run this and open the app
-                                    again:
-                                    <div class="code-block">
-                                        <pre>
-                                            <code>xattr -dr com.apple.quarantine "/Applications/Menu OTP.app"</code>
-                                        </pre>
-                                        <button class="copy-btn" type="button">
-                                            Copy
-                                        </button>
-                                    </div>
-                                </li>
-                                <li>
-                                    <strong>Right-click method (before macOS 15):</strong> In
-                                    Applications, right-click Menu OTP, choose <strong>Open</strong>, then
-                                    click <strong>Open</strong> in the dialog. macOS 15 and later no longer
-                                    offer this.
-                                </li>
-                                <li>
-                                    <strong>Settings method:</strong> Check System Settings → Privacy &
-                                    Security for a message about Menu OTP and click{' '}
-                                    <strong>Open Anyway</strong>.
-                                </li>
-                            </ul>
-                        </li>
-                        <li>
-                            Click the Menu OTP icon in the menu bar and choose{' '}
-                            <strong>Menu OTP Settings...</strong> to add your first account.
-                        </li>
-                        <li>
-                            The first time Menu OTP saves your accounts, macOS asks whether it may use
-                            its Keychain item. Choose <strong>Always Allow</strong>. Each new version asks
-                            once more.
-                        </li>
-                    </ol>
+                    <div class="prose">
+                        <ol>
+                            <li>
+                                Open the downloaded <code>.dmg</code> and drag Menu OTP into Applications.
+                            </li>
+                            <li>
+                                The app isn't notarized by Apple, so macOS blocks it the first time. Try
+                                these approaches:
+                                <ul>
+                                    <li>
+                                        <strong>Terminal method (any macOS):</strong> Run this and open the app
+                                        again:
+                                        <div class="code-block">
+                                            <pre>
+                                                <code>xattr -dr com.apple.quarantine "/Applications/Menu OTP.app"</code>
+                                            </pre>
+                                            <button class="copy-btn" type="button">
+                                                Copy
+                                            </button>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <strong>Right-click method (before macOS 15):</strong> In
+                                        Applications, right-click Menu OTP, choose <strong>Open</strong>, then
+                                        click <strong>Open</strong> in the dialog. macOS 15 and later no longer
+                                        offer this.
+                                    </li>
+                                    <li>
+                                        <strong>Settings method:</strong> Check System Settings → Privacy &
+                                        Security for a message about Menu OTP and click{' '}
+                                        <strong>Open Anyway</strong>.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                Click the Menu OTP icon in the menu bar and choose{' '}
+                                <strong>Menu OTP Settings...</strong> to add your first account.
+                            </li>
+                            <li>
+                                The first time Menu OTP saves your accounts, macOS asks whether it may use
+                                its Keychain item. Choose <strong>Always Allow</strong>. Each new version asks
+                                once more.
+                            </li>
+                        </ol>
+                    </div>
                 </div>
             </section>
 

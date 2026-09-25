@@ -108,17 +108,9 @@ footer {
     align-items: center;
     gap: 1.5rem;
     text-align: center;
-    padding-top: 5rem;
-    padding-bottom: 4.5rem;
-}
-
-/* The logo is a white glyph on transparency; masking it lets it take the exact accent color */
-.hero .logo {
-    width: 96px;
-    height: 96px;
-    background-color: var(--accent);
-    -webkit-mask: url(logo.png) center / contain no-repeat;
-    mask: url(logo.png) center / contain no-repeat;
+    /* Tighter than other sections, so Install shows on a laptop's first screen */
+    padding-top: 3rem;
+    padding-bottom: 1.5rem;
 }
 
 h1 {
@@ -126,19 +118,24 @@ h1 {
     font-weight: 700;
 }
 
+/* As on skrapa.iambrian.com: thin, large, and filled with a text -> accent -> text fade */
+.hero h1 {
+    max-width: 20ch;
+    font-size: clamp(2.4rem, 6vw, 3.75rem);
+    font-weight: 200;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    background: linear-gradient(120deg, var(--text) 20%, var(--accent-hover) 50%, var(--text) 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
 .tagline {
     max-width: 34rem;
     font-size: 1.15rem;
     color: var(--muted);
-}
-
-.cta-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
 }
 
 .btn {
@@ -179,10 +176,6 @@ h1 {
     border-color: var(--accent);
 }
 
-.badge {
-    height: 20px;
-}
-
 .screenshot {
     /* Keeps the aspect ratio when max-width shrinks an image that has width/height attributes */
     height: auto;
@@ -191,9 +184,178 @@ h1 {
     filter: drop-shadow(0 16px 32px rgb(0 0 0 / 0.55));
 }
 
-.screenshot-hero {
-    max-width: min(100%, 354px);
-    margin-top: 2rem;
+/* Hero: a drawn macOS menu bar over a dark "desktop", the real menu hanging from Menu
+   OTP's icon (components/hero-demo.tsx, animated by hero-demo.ts) */
+
+.hero-demo {
+    position: relative;
+    width: min(100%, 720px);
+    /* The bar, the tallest frame (the open menu), and room for its shadow */
+    height: calc(30px + 319px + 44px);
+    margin-top: 1.5rem;
+    overflow: hidden;
+    border-radius: 14px 14px 0 0;
+    text-align: left;
+}
+
+/* The "desktop": a dark wash of the site's blue, with its border, fading to nothing at
+   the bottom so the demo melts into the page. On its own layer so the fade (a mask)
+   doesn't touch the menu frames over it. */
+.hero-demo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    background:
+        radial-gradient(90% 70% at 50% 0%, rgb(10 132 255 / 0.2) 0%, transparent 70%),
+        linear-gradient(to bottom, rgb(10 132 255 / 0.07), rgb(10 132 255 / 0));
+    -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent);
+    mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+
+.demo-screen {
+    position: absolute;
+    inset: 0;
+}
+
+/* Bottom right, over the desktop, only while the animation is paused */
+.demo-play {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    color: #fff;
+    background: rgb(255 255 255 / 0.12);
+    border: 1px solid rgb(255 255 255 / 0.22);
+    border-radius: 50%;
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.demo-play[hidden] {
+    display: none;
+}
+
+/* While paused, the whole demo plays on a click */
+.hero-demo.paused {
+    cursor: pointer;
+}
+
+.demo-play:hover {
+    background: rgb(255 255 255 / 0.22);
+}
+
+.demo-play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.menubar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    /* Tight enough that Menu OTP's icon, first of the group, has room for its menu
+       to hang centred under it */
+    gap: 6px;
+    height: 30px;
+    padding: 0 14px;
+    color: #fff;
+    background: #000;
+    font-size: 13.5px;
+    white-space: nowrap;
+}
+
+.menubar-item {
+    display: grid;
+    place-items: center;
+    height: 22px;
+    padding: 0 5px;
+    border-radius: 6px;
+}
+
+.menubar-dim {
+    opacity: 0.55;
+}
+
+/* A status item is highlighted while its menu is open */
+.menubar-otp.active {
+    background: rgb(255 255 255 / 0.22);
+}
+
+/* The app's template icon, drawn in the bar's white, as macOS renders it */
+.menubar-glyph {
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    -webkit-mask: url(logo.png) center / contain no-repeat;
+    mask: url(logo.png) center / contain no-repeat;
+}
+
+.menubar-clock {
+    padding-left: 6px;
+}
+
+.demo-stage {
+    position: absolute;
+    inset: 30px 0 0;
+}
+
+/* Frames swap instantly, as a real menu's contents do */
+.demo-frame {
+    position: absolute;
+    top: 0;
+    height: auto;
+    opacity: 0;
+    filter: drop-shadow(0 12px 28px rgb(0 0 0 / 0.55));
+}
+
+.demo-frame.shown {
+    opacity: 1;
+}
+
+/* Until hero-demo.ts measures the icon, hang them near the right, under it */
+.demo-menu {
+    left: var(--menu-left, calc(100% - 353px - 110px));
+    width: min(353px, calc(100% - 16px));
+}
+
+.demo-copied {
+    left: var(--copied-left, calc(100% - 310px - 130px));
+    width: min(310px, calc(100% - 16px));
+}
+
+.demo-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.5));
+}
+
+.hero-demo.animated .demo-cursor {
+    opacity: 1;
+}
+
+/* A phone-width bar drops the items macOS would hide first */
+@media (max-width: 600px) {
+    .menubar-optional {
+        display: none;
+    }
+
+    .menubar {
+        gap: 4px;
+        padding: 0 8px;
+        font-size: 12.5px;
+    }
 }
 
 .prose .screenshot {
@@ -202,7 +364,7 @@ h1 {
 
 .features h2,
 .usage h2,
-.download h2,
+.install h2,
 .build-locally h2 {
     text-align: center;
     font-size: 1.75rem;
@@ -241,6 +403,75 @@ h1 {
     text-decoration: underline;
 }
 
+/* Install: a section like Build from source (centred heading, centred command), with
+   Bash / Manual tabs over one centred column */
+
+.install .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    max-width: 42rem;
+    margin: 0 auto 2rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    /* Square, and sitting on the list's own line so the selected tab's replaces it */
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+}
+
+.tab:hover {
+    color: var(--text);
+}
+
+.tab[aria-selected='true'] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+}
+
+.tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.install .tab-panel {
+    max-width: 42rem;
+    margin: 0 auto;
+}
+
+/* The command and its note, centred like Build from source's */
+.install .code-block {
+    margin: 0 auto;
+    text-align: left;
+}
+
+.install .sub {
+    margin-top: 1.25rem;
+}
+
+/* Manual: the download button centred, the steps below it in the prose column */
+.install .btn {
+    margin-bottom: 2rem;
+}
+
+.install .prose {
+    margin: 0 auto;
+}
+
+.install .prose ol {
+    gap: 1rem;
+}
+
 /* Usage guide: prose beside the settings screenshot, stacked on narrow screens */
 
 .usage-layout {
@@ -277,9 +508,14 @@ h1 {
     margin-top: 0;
 }
 
-.download,
+.install,
 .build-locally {
     text-align: center;
+}
+
+/* Straight after the hero's demo, with none of the usual section gap above */
+.install {
+    padding-top: 0;
 }
 
 .lede {
@@ -287,35 +523,13 @@ h1 {
     margin-bottom: 1.75rem;
 }
 
-.download .prose {
-    text-align: left;
-    max-width: 42rem;
-    margin: 2.5rem auto 0;
-}
-
-/* Centred under their headings; fit-content (above) sets the width */
-.download > .code-block,
+/* Centred under its heading; fit-content (below) sets the width */
 .build-locally .code-block {
     text-align: left;
     margin: 2.5rem auto 0;
 }
 
-/* The one-line install sits under the download button, its lede tight above it */
-.install-lede {
-    max-width: 42rem;
-    margin: 2.5rem auto 0;
-}
-
-.download > .install-lede + .code-block {
-    margin-top: 1rem;
-}
-
-.download .prose ol {
-    gap: 1rem;
-}
-
-.build-locally .sub,
-.download > .sub {
+.build-locally .sub {
     margin-top: 1.25rem;
 }
 

@@ -48,5 +48,21 @@ app/scripts/demo.sh --snapshot web/assets --real-icons
 ```
 
 `screenshot-settings.png` is `settings-full.png` (the whole window, down to General).
+The hero (`components/hero-demo.tsx`, animated by `hero-demo.ts`) draws its menu bar in
+HTML and uses four frames from a run with only the first six demo accounts (the snapshot
+hides the third, leaving five), so the menu is short enough for Install to show near the
+fold:
+
+```bash
+head -6 app/scripts/demo-data.txt > /tmp/hero.txt
+MENU_OTP_DEMO_FILE=/tmp/hero.txt app/scripts/demo.sh --snapshot /tmp/hero --real-icons
+cp /tmp/hero/menu.png web/assets/hero-menu.png
+cp /tmp/hero/menu-row-0.png web/assets/hero-row-0.png
+cp /tmp/hero/menu-row-1.png web/assets/hero-row-1.png
+cp /tmp/hero/menu-copied.png web/assets/hero-copied.png
+```
+
+The pointer's targets in `hero-demo.ts` (`ROW_X`, `ROW_Y`) are measured from these frames;
+re-measure them if the menu's row layout changes.
 `screenshot-copied.png`, `screenshot-edit.png`, `screenshot-general.png` (from
 `settings-full.png`) and `screenshot-reorder.png` are crops of those.
