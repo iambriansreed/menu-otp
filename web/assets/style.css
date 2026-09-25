@@ -307,6 +307,45 @@ h1 {
     inset: 30px 0 0;
 }
 
+/* Desktop folders, drawn under the menu frames */
+.desktop {
+    position: absolute;
+    inset: 30px 0 0;
+}
+
+.desktop-folder {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 84px;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: center;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
+}
+
+.desktop-folder svg {
+    filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.35));
+}
+
+/* Top right, where Finder puts desktop icons and the open menu never reaches, a few
+   pixels off any grid: dropped there by hand */
+.desktop-projects {
+    right: 29px;
+    top: 21px;
+}
+
+/* Tucked under the open menu (hero-demo.ts sets --menu-left), so it only shows when
+   the menu closes or shrinks to the Copied confirmation */
+.desktop-secret {
+    left: calc(var(--menu-left, 250px) + 150px);
+    top: 168px;
+}
+
 /* Frames swap instantly, as a real menu's contents do */
 .demo-frame {
     position: absolute;

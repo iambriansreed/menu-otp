@@ -98,6 +98,13 @@ export function HeroDemo() {
                         {menuBarTime(new Date())}
                     </span>
                 </div>
+                {/* Desktop folders, under the menu frames. Projects sits top right, where
+                    Finder puts icons and the open menu never reaches, a little off the grid;
+                    Death Star Plans hides exactly under the menu, seen only when it closes */}
+                <div class="desktop" aria-hidden="true">
+                    <DesktopFolder class="desktop-projects" label="Projects" />
+                    <DesktopFolder class="desktop-secret" label="Death Star Plans" />
+                </div>
                 <div class="demo-stage" aria-hidden="true">
                     <img class="demo-frame demo-menu shown" data-demo="menu" src="hero-menu.png" alt="" width="353" height="319" />
                     <img class="demo-frame demo-menu" data-demo="row-0" src="hero-row-0.png" alt="" width="353" height="319" />
@@ -114,6 +121,20 @@ export function HeroDemo() {
                     <path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5Z" fill="currentColor" />
                 </svg>
             </button>
+        </div>
+    );
+}
+
+/** A folder on the desktop as Finder draws one: the blue folder, its name below. */
+function DesktopFolder(props: { class: string; label: string }) {
+    return (
+        <div class={`desktop-folder ${props.class}`}>
+            <svg viewBox="0 0 64 52" width="56" height="46">
+                <path d="M4 8a4 4 0 0 1 4-4h15.2a4 4 0 0 1 3 1.3L29.6 9H56a4 4 0 0 1 4 4v3H4V8Z" fill="#5aa7ec" />
+                <rect x="4" y="13" width="56" height="35" rx="4" fill="#79bdf6" />
+                <rect x="4" y="13" width="56" height="3" rx="1.5" fill="#a9d6fb" opacity="0.8" />
+            </svg>
+            <span>{props.label}</span>
         </div>
     );
 }
