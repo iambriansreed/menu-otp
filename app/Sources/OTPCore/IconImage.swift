@@ -18,7 +18,7 @@ public enum IconImage {
     static func decode(_ data: Data) -> CGImage? {
         // ImageIO can open .ico files itself but ignores the 1-bit AND mask of
         // non-32-bit entries (verified on macOS 26), leaving masked pixels opaque.
-        // So .ico goes through the port of the Electron app's own decoder.
+        // So .ico goes through our own decoder, below.
         ICO.isICO(data) ? ICO.decode(data) : imageIO(data)
     }
 
@@ -43,9 +43,9 @@ public enum IconImage {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
-    /// Aspect-fit into 32x32 with high-quality interpolation. (The Electron app
-    /// stretched non-square images; icon services virtually always return square
-    /// ones, and letterboxing is the better failure mode.)
+    /// Aspect-fit into 32x32 with high-quality interpolation. Icon services virtually
+    /// always return square images; for one that isn't, letterboxing is a better
+    /// failure than stretching.
     static func resized(_ image: CGImage) -> CGImage? {
         guard image.width > 0, image.height > 0,
               let space = CGColorSpace(name: CGColorSpace.sRGB),
@@ -73,8 +73,7 @@ public enum IconImage {
 }
 
 /// .ico container parsing plus a BITMAPINFOHEADER DIB decoder (uncompressed 1/4/8
-/// bit palettized, 24 and 32 bit, with the 1-bit AND transparency mask). Ported
-/// from `decodeIco`/`decodeDib` in the Electron app's src/favicon.ts.
+/// bit palettized, 24 and 32 bit, with the 1-bit AND transparency mask).
 enum ICO {
     static func isICO(_ data: Data) -> Bool {
         let d = [UInt8](data.prefix(6))

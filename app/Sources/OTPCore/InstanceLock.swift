@@ -9,10 +9,9 @@ public struct InstanceLockError: LocalizedError {
     }
 }
 
-/// One running instance per data directory, like Electron's
-/// requestSingleInstanceLock() (which is per-userData). An flock(2) on a file in
-/// the data directory: the kernel drops it when the process dies, so a crash can
-/// never leave a stale lock behind. Demo mode uses its own data directory, so a
+/// One running instance per data directory. An flock(2) on a file in the data
+/// directory: the kernel drops it when the process dies, so a crash can never leave
+/// a stale lock behind. Demo mode uses its own data directory, so a
 /// demo instance runs alongside the real one.
 public final class InstanceLock {
     private let fd: Int32

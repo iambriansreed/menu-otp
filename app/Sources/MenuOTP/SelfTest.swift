@@ -167,7 +167,9 @@ final class SelfTest {
         // A List holds clicks on text fields in its rows for the double-click interval
         check("Settings uses no List outside reorder mode", !containsTable(settings.window?.contentView))
         check("app is in the Dock while Settings is open", NSApp.activationPolicy() == .regular)
-        check("the From URL field (it holds a secret) is masked", count(NSSecureTextField.self, in: settings.window?.contentView) == 1)
+        // Add Account opens on From Screen, one click zone (the crosshair itself is another
+        // process, so it can't be driven from here): no fields, so nothing secret showing
+        check("Settings opens on From Screen, with no secret fields", count(NSSecureTextField.self, in: settings.window?.contentView) == 0)
         settings.close()
         await settle()
         check("closing Settings leaves the Dock", NSApp.activationPolicy() == .accessory)
@@ -179,12 +181,12 @@ final class SelfTest {
         settings.close()
         await settle()
 
-        settings.initialState = .init(addTab: .importFile, openFilePicker: true)
+        settings.initialState = .init(addTab: .bulkImport, openFilePicker: true)
         settings.show()
         for _ in 0..<30 where settings.window?.attachedSheet == nil {
             try? await Task.sleep(for: .milliseconds(100))
         }
-        check("Import's file picker is a sheet on the Settings window", settings.window?.attachedSheet != nil)
+        check("Bulk Import's file picker is a sheet on the Settings window", settings.window?.attachedSheet != nil)
         if let window = settings.window, let sheet = window.attachedSheet { window.endSheet(sheet) }
         await settle()
         settings.close()
@@ -218,8 +220,8 @@ final class SelfTest {
         settings.initialState = .init(editing: model.accounts.first?.identity, addTab: .manual)
         settings.show()
         await settle()
-        // Edit panel's Secret and Manual's Secret; From URL isn't showing
-        check("every secret field is masked", count(NSSecureTextField.self, in: settings.window?.contentView) == 2)
+        // Edit panel's Secret, plus Manual's URL and Secret
+        check("every secret field is masked", count(NSSecureTextField.self, in: settings.window?.contentView) == 3)
         settings.close()
         await settle()
         settings.initialState = .init()

@@ -1,16 +1,17 @@
 import Foundation
 
-/// Parses `otpauth://totp/...` URLs the way the Electron app's `parseOtpUrl` did:
-/// only `secret` and `issuer` are read, only `totp` is accepted.
+/// Parses `otpauth://totp/...` URLs: only `secret` and `issuer` are read, only `totp`
+/// is accepted. Lenient where people paste sloppily (raw spaces), strict where a
+/// guess could store the wrong account (bad escapes in the label).
 public enum OTPAuthURL {
     public static func parse(_ raw: String) -> Account? {
-        // WHATWG URL (what Electron used) quietly percent-encodes a raw space in the
-        // label; URLComponents rejects it instead, so do the encoding here.
+        // A raw space in the label is accepted, as browsers accept one; URLComponents
+        // rejects it, so do the encoding here.
         let escaped = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: " ", with: "%20")
-        // decodeURIComponent threw on a malformed escape in the label, failing the
-        // whole parse. URLComponents instead silently re-escapes a stray "%", so
-        // reject it up front. (The query is exempt: URLSearchParams never threw.)
+        // A malformed escape in the label fails the whole parse. URLComponents would
+        // silently re-escape a stray "%" instead, so reject it up front. (The query
+        // is exempt: its values are read leniently, as URLSearchParams reads them.)
         let beforeQuery = escaped.split(separator: "?", maxSplits: 1).first ?? ""
         if beforeQuery.range(of: "%(?![0-9A-Fa-f]{2})", options: .regularExpression) != nil {
             return nil
@@ -27,8 +28,8 @@ public enum OTPAuthURL {
 
         var encodedLabel = components.percentEncodedPath
         if encodedLabel.hasPrefix("/") { encodedLabel.removeFirst() }
-        // Well-formed escapes that aren't valid UTF-8 ("%E0%A4") also made
-        // decodeURIComponent throw; removingPercentEncoding returns nil for them.
+        // Well-formed escapes that aren't valid UTF-8 ("%E0%A4") fail too;
+        // removingPercentEncoding returns nil for them.
         guard let label = encodedLabel.removingPercentEncoding else { return nil }
 
         var issuer = ""

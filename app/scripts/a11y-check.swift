@@ -103,28 +103,36 @@ check("each account's hide and delete buttons are named for it", !accounts.isEmp
 let iconLike = nodes.filter { $0.role == kAXImageRole || ($0.role == kAXStaticTextRole && $0.text.count == 1) }
 check("account icons are hidden from VoiceOver", iconLike.isEmpty, "\(iconLike.count) found")
 
-check("the From URL field is a secure field", nodes.contains { $0.subrole == kAXSecureTextFieldSubrole })
-check("the From URL field's eye button says what it shows", labels.contains("Show URL"))
+// MARK: Add Account, which opens on From Screen
+
+// Not pressed: that would start the system's crosshair, which waits for a person
+check("From Screen's click zone is a button VoiceOver can read",
+      buttons.contains { ($0.label + $0.title).contains("QR code on screen") })
+
+// Manual adds a second icon editor, used below. Between the edit panel and this one,
+// both icon modes (emoji and favicon) are on screen whatever the first account's icon is.
+let manual = nodes.first { $0.role == kAXRadioButtonRole && $0.label == "Manual" }
+check("VoiceOver can switch Add Account to Manual", manual?.press() == true)
+_ = wait { content.all.contains { $0.label == "Show URL" } }
+nodes = content.all
+check("the URL field is a secure field", nodes.contains { $0.subrole == kAXSecureTextFieldSubrole })
+check("the URL field's eye button says what it shows", nodes.contains { $0.label == "Show URL" })
 
 // MARK: An edit panel, opened the way VoiceOver would
 
 let firstAccount = accounts.first ?? ""
-check("VoiceOver can press Edit", buttons.first { $0.label == "Edit \(firstAccount)" }?.press() == true)
+// Looked up again: the Manual switch above redrew Add Account
+let edit = nodes.first { $0.role == kAXButtonRole && $0.label == "Edit \(firstAccount)" }
+check("VoiceOver can press Edit", edit?.press() == true)
 _ = wait { content.all.contains { $0.label == "Show secret" } }
 nodes = content.all
-// From URL's field and the edit panel's Secret
-check("the edit panel's Secret field is a secure field", nodes.filter { $0.subrole == kAXSecureTextFieldSubrole }.count == 2)
+// Manual's URL and Secret fields, and the edit panel's Secret
+check("the edit panel's Secret field is a secure field", nodes.filter { $0.subrole == kAXSecureTextFieldSubrole }.count == 3)
 let showSecret = nodes.first { $0.role == kAXButtonRole && $0.label == "Show secret" }
 check("the Secret field's eye button is named", showSecret != nil)
 check("VoiceOver can reveal the secret", showSecret?.press() == true)
 check("revealed, the eye button offers to hide it", wait { content.all.contains { $0.label == "Hide secret" } })
 
-// The Manual tab adds a second icon editor. Between the edit panel and this one, both
-// icon modes (emoji and favicon) are on screen whatever the first account's icon is.
-let manual = content.all.first { $0.role == kAXRadioButtonRole && $0.label == "Manual" }
-check("VoiceOver can switch Add Account to Manual", manual?.press() == true)
-_ = wait { content.all.filter { $0.label == "Clear icon" }.count >= 2 }
-nodes = content.all
 let named = Set(nodes.map(\.label))
 check("icon editors' Clear buttons are named", nodes.filter { $0.label == "Clear icon" }.count >= 2)
 let emojiMode = named.contains("Emoji") && named.contains("Open the emoji picker")

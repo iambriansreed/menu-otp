@@ -5,12 +5,14 @@ import SwiftUI
 ///
 /// The row's identity in the List is the account's identity, so SwiftUI keeps this
 /// view's @State (an open panel, typed-but-unsaved fields, a staged icon) across
-/// every unrelated change to the list. That is what the Electron version's
-/// captureOpenEdits() machinery had to do by hand.
+/// every unrelated change to the list, with no bookkeeping of its own.
 struct AccountRowView: View {
     let account: Account
     let model: AccountsModel
+    /// Open the edit panel: when the row appears (a just-added account) or later (one
+    /// that already existed). `onStartedEditing` then clears the request.
     var startEditing = false
+    var onStartedEditing: () -> Void = {}
 
     @State private var isEditing = false
     @State private var isHovering = false
@@ -49,9 +51,8 @@ struct AccountRowView: View {
                 summary
             }
         }
-        .onAppear {
-            if startEditing, !isEditing { beginEditing() }
-        }
+        .onAppear(perform: handleEditRequest)
+        .onChange(of: startEditing, handleEditRequest)
     }
 
     private var summary: some View {
@@ -140,6 +141,12 @@ struct AccountRowView: View {
         .padding(.vertical, SettingsMetrics.cardPadding)
     }
 
+    private func handleEditRequest() {
+        guard startEditing else { return }
+        onStartedEditing()
+        if !isEditing { beginEditing() }
+    }
+
     private func beginEditing() {
         fields.issuer = account.issuer
         fields.account = account.account
@@ -153,7 +160,7 @@ struct AccountRowView: View {
             label: { (fields.issuer, fields.account) }
         )
         isEditing = true
-        // Ready to type, as in Easy OTP. The field exists only after this update.
+        // Ready to type. The field exists only after this update.
         DispatchQueue.main.async { issuerFocused = true }
     }
 

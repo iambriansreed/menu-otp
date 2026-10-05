@@ -33,10 +33,9 @@ public final class InMemoryKeyProvider: KeyProvider {
 }
 
 /// The real store: a random 256-bit key kept as a generic password in the login
-/// Keychain, the native equivalent of Electron's safeStorage. The item's ACL trusts
-/// the app that created it; since builds are ad-hoc signed, every new build is a
-/// "different" app to the Keychain and macOS asks once whether to allow access
-/// (Electron's ad-hoc builds behave the same way).
+/// Keychain. The item's ACL trusts the app that created it; since builds are ad-hoc
+/// signed, every new build is a "different" app to the Keychain and macOS asks once
+/// whether to allow access.
 public final class KeychainKeyProvider: KeyProvider {
     public let service: String
     public let account: String

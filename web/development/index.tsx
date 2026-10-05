@@ -205,6 +205,20 @@ export function Page(): Skrapa.Page {
                         fields, uses a List, for its native drag and drop.
                     </p>
 
+                    <h3>Scanning QR codes</h3>
+                    <p>
+                        Add Account's <strong>From Screen</strong> runs macOS's own area selection,{' '}
+                        <code>screencapture -i</code>, into a temporary folder only the user can read,
+                        and deletes the image once it's loaded.{' '}
+                        <code>app/Sources/OTPCore/QRCode.swift</code> finds the QR codes in it with Core
+                        Image's detector (Vision's needs an inference context that virtual machines,
+                        CI's included, can fail to create) and turns the first{' '}
+                        <code>otpauth://</code> one into an account. It needs Screen Recording: without
+                        it the grab quietly holds only the wallpaper, so the app checks first. macOS
+                        charges that permission to whatever launched the app, so under{' '}
+                        <code>app/scripts/demo.sh</code> it's your terminal's or editor's.
+                    </p>
+
                     <h2>Scripts</h2>
                     <table>
                         <thead>

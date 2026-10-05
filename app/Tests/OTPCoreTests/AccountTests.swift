@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import OTPCore
 
-@Test func accountJSONMatchesElectronShape() throws {
+@Test func accountJSONHasTheStoredShape() throws {
     let a = Account(account: "jane@example.com", secret: "ABC", issuer: "Stripe")
     let json = String(decoding: try JSONEncoder().encode(a), as: UTF8.self)
     #expect(json.contains("\"account\":\"jane@example.com\""))
@@ -16,7 +16,7 @@ import Testing
     #expect(decoded == hidden)
 }
 
-@Test func accountDecodesElectronJSONWithMissingOptionals() throws {
+@Test func accountDecodesJSONWithMissingOptionals() throws {
     let json = #"[{"account":"a","secret":"S","issuer":"I","hidden":true,"iconCheckedAt":1700000000000}]"#
     let decoded = try JSONDecoder().decode([Account].self, from: Data(json.utf8))
     #expect(decoded.first?.hidden == true)

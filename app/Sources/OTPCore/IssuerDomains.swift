@@ -1,8 +1,7 @@
 import Foundation
 
 /// Turns a free-text issuer (or URL) into candidate domains for a favicon lookup,
-/// best guess first. A line-for-line port of `issuerToDomains` in the Electron
-/// app's src/favicon.ts.
+/// best guess first.
 public enum IssuerDomains {
     private static let authWords: Set<String> = [
         "id", "account", "accounts", "auth", "authenticator", "login",

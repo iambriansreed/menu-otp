@@ -6,9 +6,8 @@ import os
 /// Settings window. Every change goes through `mutate`, which validates, persists,
 /// then publishes.
 ///
-/// Because both windows read this one object, the Electron app's cross-process
-/// machinery (pushing backfilled icons to Settings over IPC, re-applying pending
-/// icons on save, capturing open edits before a re-render) has nothing to do here.
+/// Because both windows read this one object, nothing has to be synchronised between
+/// them: a backfilled icon or a saved edit is visible everywhere at once.
 @Observable
 @MainActor
 public final class AccountsModel {

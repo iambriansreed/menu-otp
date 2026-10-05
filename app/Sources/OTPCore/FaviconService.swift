@@ -16,9 +16,9 @@ public protocol HTTPFetching: Sendable {
 public struct URLSessionFetcher: HTTPFetching {
     static let maxBytes = 2_000_000
 
-    /// `timeoutIntervalForResource` bounds the entire transfer, headers and body,
-    /// like the Electron app's abort timer: a service that sends headers and then
-    /// stalls must not hang a lookup (and every caller sharing its cache entry).
+    /// `timeoutIntervalForResource` bounds the entire transfer, headers and body: a
+    /// service that sends headers and then stalls must not hang a lookup (and every
+    /// caller sharing its cache entry).
     private static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 5

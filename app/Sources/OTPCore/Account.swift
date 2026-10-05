@@ -13,10 +13,9 @@ public struct AccountIdentity: Hashable, Sendable {
     }
 }
 
-/// One TOTP account. The JSON shape matches the Electron app's `Account` type
-/// field for field (`hidden` omitted when false, optionals omitted when nil,
-/// `iconCheckedAt` in epoch milliseconds), so a future import/export between the two
-/// apps is a straight copy.
+/// One TOTP account. The JSON shape is fixed (`hidden` omitted when false, optionals
+/// omitted when nil, `iconCheckedAt` in epoch milliseconds): it's what `accounts.enc`
+/// holds, so changing it would make existing data unreadable.
 public struct Account: Codable, Equatable, Sendable {
     public var account: String
     public var secret: String
@@ -80,9 +79,8 @@ public struct Account: Codable, Equatable, Sendable {
         AccountIdentity(issuer: issuer, account: account)
     }
 
-    /// "Issuer: account", or just the account when there is no issuer. (The Electron
-    /// popover printed ": account" for an empty issuer; Settings didn't. This uses
-    /// the Settings form everywhere.)
+    /// "Issuer: account", or just the account when there is no issuer (never
+    /// ": account"). The menu and Settings both use it.
     public var label: String {
         issuer.isEmpty ? account : "\(issuer): \(account)"
     }
@@ -102,8 +100,8 @@ public struct Account: Codable, Equatable, Sendable {
     }
 
     /// True if `secret` decodes as base32 (so TOTP.code can't throw on it). Checked
-    /// wherever a secret enters the app; Electron checked nowhere, so a bad secret
-    /// only surfaced later as a copy that silently failed.
+    /// wherever a secret enters the app; otherwise a bad secret would only surface
+    /// later, as a copy that silently failed.
     public static func isValidSecret(_ secret: String) -> Bool {
         (try? Base32.decode(secret)) != nil
     }

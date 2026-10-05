@@ -7,12 +7,26 @@ import SwiftUI
 struct AccountFieldsGrid: View {
     @Bindable var fields: AccountFields
     let iconEditor: IconEditorModel
+    /// The Manual form's otpauth:// URL, an alternative to the fields, shown above them in
+    /// the same label column. The edit panel has none.
+    var otpURL: Binding<String>?
     /// The edit panel focuses Issuer when it opens; the Manual form doesn't.
     var issuerFocus: FocusState<Bool>.Binding?
     var onSubmit: () -> Void = {}
 
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+            if let otpURL {
+                row("URL") {
+                    // The URL carries the secret, so it's masked like the Secret field
+                    SecretField(
+                        title: "URL", text: otpURL, prompt: "otpauth://totp/Issuer:Account?secret=...",
+                        name: "URL", onSubmit: onSubmit
+                    )
+                }
+                // Outside a GridRow, so it spans both columns
+                orDivider
+            }
             row("Issuer") {
                 let field = TextField("Issuer", text: $fields.issuer, prompt: Text("GitHub"))
                     .onSubmit(onSubmit)
@@ -29,6 +43,15 @@ struct AccountFieldsGrid: View {
                 IconEditorView(editor: iconEditor, placeholderSeed: fields.placeholderSeed)
             }
         }
+    }
+
+    private var orDivider: some View {
+        HStack(spacing: 8) {
+            VStack { Divider() }
+            Text("OR").font(.caption).foregroundStyle(.secondary)
+            VStack { Divider() }
+        }
+        .padding(.vertical, 4)
     }
 
     /// Labels line up on the right, against their fields, on the first text baseline

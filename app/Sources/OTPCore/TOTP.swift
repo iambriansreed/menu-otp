@@ -1,17 +1,16 @@
 import CryptoKit
 import Foundation
 
-/// RFC 6238 TOTP with the same fixed parameters as the Electron app: HMAC-SHA1,
-/// 30-second step, 6 digits. `algorithm`, `digits` and `period` from an otpauth://
-/// URL are ignored there too.
+/// RFC 6238 TOTP with fixed parameters: HMAC-SHA1, 30-second step, 6 digits.
+/// `algorithm`, `digits` and `period` from an otpauth:// URL are ignored.
 public enum TOTP {
     public static let period: TimeInterval = 30
     public static let digits = 6
 
     public static func code(secret: String, at date: Date = Date()) throws -> String {
         let key = try Base32.decode(secret)
-        // floor(), not the Electron version's Math.round() of the seconds: that
-        // round() made the old app switch to the next code up to 500 ms early.
+        // floor(), not round(), of the step count: rounding would switch to the next
+        // code up to half a step early.
         let counter = UInt64(floor(date.timeIntervalSince1970 / period))
         var bigEndian = counter.bigEndian
         let message = withUnsafeBytes(of: &bigEndian) { Data($0) }

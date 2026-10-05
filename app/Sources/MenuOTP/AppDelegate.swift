@@ -172,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.toolTip = "\(AppEnvironment.appName) - Click to view accounts"
         button.target = self
         button.action = #selector(statusItemClicked)
-        // Right-click opens the same menu, as in the Electron app
+        // Right-click opens the same menu: there's no separate context menu
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         return item
     }

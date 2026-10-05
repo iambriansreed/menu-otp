@@ -12,9 +12,8 @@ public enum Base32 {
     /// ignored. Bits left over that don't fill a whole byte are dropped, which is what
     /// every TOTP implementation does with secrets whose length isn't a multiple of 8.
     ///
-    /// Unlike the Electron app's hand-rolled decoder (which silently produced garbage
-    /// for an unknown character), anything outside the alphabet throws, so a bad
-    /// secret fails loudly instead of copying a wrong code.
+    /// Anything outside the alphabet throws rather than being skipped or guessed at,
+    /// so a bad secret fails loudly instead of copying a wrong code.
     public static func decode(_ string: String) throws -> [UInt8] {
         var buffer: UInt32 = 0
         var bits = 0

@@ -118,7 +118,13 @@ final class Snapshots {
         capture(settings.window, "settings-editing")
         settings.close()
 
-        settings.initialState = .init(addTab: .importFile)
+        settings.initialState = .init(addTab: .manual)
+        settings.show()
+        await settle(0.6)
+        capture(settings.window, "settings-manual")
+        settings.close()
+
+        settings.initialState = .init(addTab: .bulkImport)
         settings.show()
         await settle(0.6)
         capture(settings.window, "settings-import")

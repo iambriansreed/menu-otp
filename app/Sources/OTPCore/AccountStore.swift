@@ -45,10 +45,10 @@ public final class AccountStore {
     /// leaves the file alone: the caller must stop rather than save over it.
     ///
     /// A file that can't be *decrypted or parsed* with a key we do have is moved
-    /// aside to `accounts.enc.unreadable-<epoch>` and reported in `setAside`. The
-    /// Electron app deleted such a file outright; moving it keeps a recovery path for
-    /// the only copy of the user's secrets. If even the move fails this throws, so
-    /// the next save can't replace the file.
+    /// aside to `accounts.enc.unreadable-<epoch>` and reported in `setAside`, never
+    /// deleted: it may be the only copy of the user's secrets, and moving it keeps a
+    /// recovery path. If even the move fails this throws, so the next save can't
+    /// replace the file.
     public func load() throws -> StoreLoad {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return StoreLoad(accounts: []) }
         let key = try keyProvider.key()

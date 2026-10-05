@@ -29,6 +29,17 @@ struct FullWidthSegmentedControl<Value: Hashable>: NSViewRepresentable {
         control.selectedSegment = options.firstIndex { $0.value == selection } ?? -1
     }
 
+    // Take every point of width offered, at the control's own height. A low hugging
+    // priority alone wasn't enough: SwiftUI still sized the view to its intrinsic
+    // width, the labels', and centred it in the card.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize, nsView control: NSSegmentedControl, context: Context
+    ) -> CGSize? {
+        let natural = control.intrinsicContentSize
+        guard let width = proposal.width, width.isFinite else { return natural }
+        return CGSize(width: max(width, natural.width), height: natural.height)
+    }
+
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     final class Coordinator: NSObject {

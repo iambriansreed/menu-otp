@@ -4,12 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Menu OTP is a native macOS (14+) menu bar app, a Swift port of the Electron app
-Easy OTP (`/Users/brianreed/Projects/easy-otp`, whose `src/` and `CLAUDE.md` are
-the behavioural reference). It stores TOTP accounts encrypted on disk and copies
-the current 6-digit code when an account is clicked in its popover. It runs next to
-Easy OTP: its own name, bundle id `com.iambrian.menu-otp`, data directory and
-Keychain item.
+Menu OTP is a native macOS (14+) menu bar app written in Swift. It stores TOTP
+accounts encrypted on disk and copies the current 6-digit code when an account is
+clicked in its popover. Bundle id `com.iambrian.menu-otp`, with its own data directory
+and Keychain item.
 
 ## Repository layout
 
@@ -34,10 +32,13 @@ package.json  npm for the website and the release tooling; node_modules/ at the 
   Info.plist updater, is named in it as a module path (`.scripts/plist-version.mjs`)
   that commit-and-tag-version `require()`s: Node 24 can `require()` an ES module, and
   its named exports are exactly the `readVersion`/`writeVersion` pair the tool wants.
-- `.scripts/hooks/commit-msg` is a two-line shell shim, because git insists on that
+- `.scripts/hooks/commit-msg` is a small shell shim, because git insists on that
   exact filename; it runs `commit-msg.mjs`, which holds the logic and is therefore
   covered by `npm run typecheck`. That module uses only Node builtins, so the hook still
-  works in a clone where `npm install` was never run.
+  works in a clone where `npm install` was never run. A git client started from the Dock
+  (VS Code) has a bare PATH without node, so the shim also looks in Homebrew's
+  directories and nvm's newest version, and skips the check with a warning if there's
+  still no node.
 - `.gitignore` hides dotfiles with `.*`, so `.scripts` is re-included with `!.scripts`.
 - Every command below is written to run from the repository root.
 
@@ -108,8 +109,9 @@ strict Sendable checking) is the UI shell.
 | File | Responsibility |
 | --- | --- |
 | `OTPCore/Base32.swift`, `TOTP.swift` | RFC 4648 base32, RFC 6238 TOTP (SHA-1, 30 s, 6 digits, fixed) |
-| `OTPCore/Account.swift`, `AccountList.swift` | `Account` (JSON shape identical to Easy OTP's), identity, upsert/import/icon-apply on `[Account]` |
-| `OTPCore/OTPAuthURL.swift` | `otpauth://totp/` parsing with WHATWG-URL-compatible quirks |
+| `OTPCore/Account.swift`, `AccountList.swift` | `Account` (JSON shape fixed: it's what `accounts.enc` holds), identity, upsert/import/icon-apply on `[Account]` |
+| `OTPCore/OTPAuthURL.swift` | `otpauth://totp/` parsing: lenient about raw spaces, strict about bad escapes |
+| `OTPCore/QRCode.swift` | QR codes in an image (CoreImage's detector) to an `Account`, or why not |
 | `OTPCore/KeyProvider.swift`, `AccountStore.swift`, `InstanceLock.swift` | Keychain key, encrypted atomic store, one instance per data directory |
 | `OTPCore/IssuerDomains.swift`, `IconImage.swift`, `FaviconService.swift`, `FaviconResult.swift` | Favicon lookup: domain guesses, ICO/DIB decoding, DuckDuckGo then Google, caching |
 | `OTPCore/MenuLogic.swift`, `IconBackfill.swift` | Menu rows, keyboard selection, click toggle gate, 4-wide lookup runner |
@@ -182,12 +184,25 @@ Every section's content sits in the same card (`.settingsCard()`), spaced by
 keyboard focus or with VoiceOver on; otherwise their icons are drawn `.clear`, keeping
 their space. Not `opacity(0)`: SwiftUI drops zero-opacity views from the accessibility
 tree, which hid the buttons from Voice Control, Switch Control and `a11y-test.sh`. The Manual form and the edit panel share `AccountFieldsGrid` (a label column).
-Add Account's From URL / Manual / Import File tabs are `FullWidthSegmentedControl` (an
+Add Account's From Screen / Bulk Import / Manual tabs are `FullWidthSegmentedControl` (an
 NSSegmentedControl with `.fillEqually`), not a SwiftUI segmented `Picker`: whether the
 Picker stretches depends on the SDK, so local builds stretched it and CI's didn't.
+Settings opens on From Screen, the first tab.
+The Manual tab is a labelled `otpauth://` URL row, an "OR" divider, then the fields, all in
+one `AccountFieldsGrid` (its `otpURL`); Add Account uses the URL whenever one is entered.
+From Screen runs `/usr/sbin/screencapture -i` (the system's ⌘⇧4 selection) into a 0700
+temp directory, deleted before the scan, then `QRCode` decodes it and `model.add` stores
+it. Settings fades to 30% while the crosshair is up (the detector reads a code through
+it), then comes back and opens the account's edit panel (`SettingsView.editRequest`, which
+the row clears once open). It needs Screen Recording: without it the grab silently holds
+only the wallpaper, so `ScreenCapture.checkPermission` runs first and the tab offers to
+open System Settings. TCC charges the permission to the *responsible* process, so under
+`demo.sh` it's the terminal's, not the app's, and an ad-hoc-signed build may have to be
+allowed again after each rebuild. `--self-test` and `a11y-test.sh` check the tab but never
+click the zone: the crosshair is another process, waiting for a person.
 
 Settings opens with no text field focused (`SettingsWindowController` clears the
-first responder AppKit assigns), Edit focuses the Issuer field, and Import's file
+first responder AppKit assigns), Edit focuses the Issuer field, and Bulk Import's file
 picker is a `fileImporter` sheet on the Settings window, accepting any data file.
 
 ### Data
@@ -195,7 +210,7 @@ picker is a `fileImporter` sheet on the Settings window, accepting any data file
 - Everything mutates through `AccountsModel.mutate`: copy, change, refuse duplicate
   identities, save, publish, `onChange` (the popover re-measures). A change that
   changes nothing is neither saved nor published. Settings and the popover read the
-  same model, so none of Easy OTP's IPC reconciliation exists here.
+  same model, so nothing has to be synchronised between them.
 - Secrets must decode as base32 wherever they enter (URL, manual add, edit,
   import); `ModelError` and the store/Keychain errors are `LocalizedError`s whose
   text is shown to the user as-is. An account name is equally required everywhere,
@@ -217,7 +232,7 @@ picker is a `fileImporter` sheet on the Settings window, accepting any data file
   search source drops the stamp. `FaviconService` caches hits for the process
   lifetime and real misses for 10 minutes, never caches unreachable results, and
   shares in-flight lookups.
-- Every field that holds a secret (Secret in the edit panel and Manual, and the From URL
+- Every field that holds a secret (Secret in the edit panel and Manual, and Manual's URL
   field, whose URL carries one) is a `SecretField`: a `SecureField` with an eye toggle.
 - `InstanceLock.acquire` returns nil only when another process holds the lock. A data
   directory or lock file that can't be created throws, and the app shows an alert
@@ -262,8 +277,7 @@ Privacy & Security → Accessibility (exit 3 if not), so it doesn't run in CI.
 
 ## The website
 
-A static [Skrapa](https://skrapa.iambrian.com) site (Node.js 24+) in `web/`, ported from
-Easy OTP's. npm lives at the repository root, shared with the release tooling:
+A static [Skrapa](https://skrapa.iambrian.com) site (Node.js 24+) in `web/`. npm lives at the repository root, shared with the release tooling:
 `npm install` once there, then `npm run dev` (live reload on port 4159) or
 `npm run build`. Both `cd web` first, because Skrapa runs every command from the
 *skrapa root*, the directory holding the `tsconfig.json` that carries its settings under
@@ -369,8 +383,8 @@ pinned in the script.
   the pipeline silently leaves those out of the bump and the changelog. It's a plain
   Node script using only builtins (no husky, no commitlint), enabled per clone:
   `git config core.hooksPath .scripts/hooks`. The logic is in `commit-msg.mjs` so
-  `npm run typecheck` covers it; the extensionless `commit-msg` beside it is a committed
-  symlink to it, because that is the filename git insists on.
+  `npm run typecheck` covers it; the extensionless `commit-msg` beside it is the shell
+  shim that runs it, because that is the filename git insists on.
 
 `.github/workflows/release.yml` is the only workflow that runs on a push to `main`:
 

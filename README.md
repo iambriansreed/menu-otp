@@ -1,15 +1,14 @@
 # Menu OTP
 
 A native macOS menu bar app for TOTP codes. Click the menu bar icon, click an
-account, and its current 6-digit code is on the clipboard. It's a Swift/AppKit port
-of the Electron app [Easy OTP](https://github.com/iambriansreed/easy-otp) and runs
-next to it (its own name, bundle id and data).
+account, and its current 6-digit code is on the clipboard. Written in Swift with
+AppKit and SwiftUI.
 
 - Accounts are stored encrypted (AES-256-GCM) in
   `~/Library/Application Support/Menu OTP/accounts.enc`. The key is kept in your
   login Keychain.
-- Add accounts by pasting an `otpauth://` URL, typing them in, or importing a
-  `.txt` file with one `otpauth://` URL per line.
+- Add accounts by selecting a setup QR code on screen, importing a `.txt` file with
+  one `otpauth://` URL per line, or pasting an `otpauth://` URL or typing them in.
 - Copied codes are marked concealed/transient, so clipboard managers that honour
   the [nspasteboard.org](http://nspasteboard.org) markers don't keep them.
 - Icons are favicons looked up through DuckDuckGo's icon service, falling back to

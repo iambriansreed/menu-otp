@@ -146,17 +146,21 @@ export function Page(): Skrapa.Page {
                         </p>
                         <ul>
                             <li>
-                                <strong>From URL</strong>: paste an <code>otpauth://totp/</code> URL,
-                                like the one encoded in a setup QR code.
+                                <strong>From Screen</strong>: click, then drag across a setup QR code
+                                anywhere on screen. Settings fades while you select, so you can see a
+                                code behind it, then comes back with the new account open, ready to
+                                check or give an icon. It needs the Screen Recording permission, which
+                                Menu OTP asks for the first time.
                             </li>
                             <li>
-                                <strong>Manual</strong>: enter the issuer, account name, and secret,
-                                and optionally choose a favicon or an emoji.
-                            </li>
-                            <li>
-                                <strong>Import File</strong>: click or drop a file with one{' '}
+                                <strong>Bulk Import</strong>: click or drop a file with one{' '}
                                 <code>otpauth://</code> URL per line. Menu OTP reports how many accounts
                                 were added, updated, and skipped.
+                            </li>
+                            <li>
+                                <strong>Manual</strong>: paste an <code>otpauth://totp/</code> URL, like
+                                the one encoded in a setup QR code, or enter the issuer, account name,
+                                and secret, and optionally choose a favicon or an emoji.
                             </li>
                         </ul>
                         <p>
@@ -166,8 +170,8 @@ export function Page(): Skrapa.Page {
                             it, rather than failing later when you copy a code.
                         </p>
                         <p>
-                            Secrets are masked as you type or edit them, and so is the{' '}
-                            <strong>From URL</strong> field, since the URL contains the secret. Click
+                            Secrets are masked as you type or edit them, and so is the URL field,
+                            since the URL contains the secret. Click
                             the eye button beside a field to see what's in it.
                         </p>
 
@@ -263,7 +267,7 @@ export function Page(): Skrapa.Page {
                             <strong>Export Accounts...</strong> saves every account to a text file,
                             named <code>menu_otp_export.txt</code> unless you choose another name, with
                             one <code>otpauth://</code> URL per line. That's the format{' '}
-                            <strong>Import File</strong> reads, and one most authenticator apps
+                            <strong>Bulk Import</strong> reads, and one most authenticator apps
                             accept, so it works as a backup or for moving to another Mac. Icons and
                             hidden settings aren't included.
                         </p>
@@ -280,7 +284,8 @@ export function Page(): Skrapa.Page {
                             is kept in your login Keychain. The only network requests Menu OTP makes are
                             icon lookups, which send a website name to DuckDuckGo's icon service, and to
                             Google's only when DuckDuckGo has no icon for it. Secrets are never sent
-                            anywhere.
+                            anywhere. A QR code scanned with <strong>From Screen</strong> is read on
+                            your Mac, and the screen grab is deleted as soon as it has been read.
                         </p>
 
                         <h3>Supported codes</h3>
@@ -289,21 +294,13 @@ export function Page(): Skrapa.Page {
                             seconds, using SHA-1. Accounts set up for 8 digits, a different interval,
                             another algorithm, or counter-based (HOTP) codes won't work.
                         </p>
-
-                        <h3>Coming from Easy OTP</h3>
-                        <p>
-                            Menu OTP is the native rewrite of{' '}
-                            <a href="https://easy-otp.iambrian.com">Easy OTP</a>. The two are separate
-                            apps with their own data and can run side by side. To bring accounts over,
-                            import a file of their <code>otpauth://</code> URLs.
-                        </p>
                     </div>
                     <img
                         class="screenshot"
                         src="screenshot-settings.png"
-                        alt="The Menu OTP Settings window: accounts with icons, one marked Hidden, then the Add Account form, then General with Open at login and Export Accounts"
+                        alt="The Menu OTP Settings window: accounts with icons, one marked Hidden, then Add Account with From Screen, Bulk Import and Manual tabs and From Screen's click zone, then General with Open at login and Export Accounts"
                         width="480"
-                        height="794"
+                        height="800"
                         loading="lazy"
                         decoding="async"
                     />

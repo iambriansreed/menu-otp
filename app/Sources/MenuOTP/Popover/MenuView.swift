@@ -277,8 +277,8 @@ struct CopiedView: View {
     var body: some View {
         HStack(spacing: 16) {
             // Each side column holds both strings (one hidden), so the two columns
-            // are equally wide and "Copied" sits dead centre, like the Electron
-            // version's `grid-template-columns: 1fr auto 1fr`.
+            // are equally wide and "Copied" sits dead centre, whatever the lengths of
+            // the issuer and the code.
             ZStack(alignment: .leading) {
                 Text(code).hidden()
                 Text(issuer)

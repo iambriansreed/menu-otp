@@ -68,8 +68,8 @@ public final class IconEditorModel {
     }
 
     /// Keeps a single grapheme (an emoji with modifiers is one Character): the
-    /// *last* one, i.e. the newest pick. (The Electron app kept the first, so picking
-    /// a second emoji silently did nothing until the field was cleared.)
+    /// *last* one, i.e. the newest pick. (Keeping the first would make picking a
+    /// second emoji silently do nothing until the field was cleared.)
     public func setEmoji(_ text: String) {
         let newest = text.last.map { String($0) } ?? ""
         // SwiftUI can write a binding back unchanged; that isn't an edit

@@ -55,7 +55,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Fresh window and form state next time, as in the Electron app
+        // Fresh window and form state next time: nothing half-typed survives a close
         window = nil
         NSApp.setActivationPolicy(.accessory)
     }

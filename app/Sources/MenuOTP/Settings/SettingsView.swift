@@ -25,9 +25,9 @@ final class AccountFields {
 struct SettingsView: View {
     struct InitialState {
         var editing: AccountIdentity?
-        var addTab: AddAccountView.Tab = .url
+        var addTab: AddAccountView.Tab = .screen
         var reordering = false
-        /// Test hook: open Import's file picker as soon as the window appears.
+        /// Test hook: open Bulk Import's file picker as soon as the window appears.
         var openFilePicker = false
         /// Test hook: show Export's plain-text warning as soon as the window appears.
         var confirmExport = false
@@ -37,12 +37,16 @@ struct SettingsView: View {
     let loginItem: LoginItem
     let initial: InitialState
     @State private var reordering: Bool
+    /// The account whose edit panel should open: the test hook's, or one From Screen just
+    /// added. Its row clears it once the panel is open.
+    @State private var editRequest: AccountIdentity?
 
     init(model: AccountsModel, loginItem: LoginItem, initial: InitialState = InitialState()) {
         self.model = model
         self.loginItem = loginItem
         self.initial = initial
         _reordering = State(initialValue: initial.reordering)
+        _editRequest = State(initialValue: initial.editing)
     }
 
     var body: some View {
@@ -60,50 +64,67 @@ struct SettingsView: View {
     /// rows for the double-click interval (0.5 s by default) before the field gets
     /// focus, which made the edit panel and the Add Account form feel sluggish.
     private var mainView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: SettingsMetrics.sectionGap) {
-                SettingsSection("Accounts") {
-                    HStack(spacing: 8) {
-                        BulkIconsRow(model: model)
-                        if model.accounts.count > 1 {
-                            Button("Reorder") { reordering = true }
-                                .help("Drag accounts into the order the menu shows them")
+        ScrollViewReader { scroller in
+            ScrollView {
+                VStack(alignment: .leading, spacing: SettingsMetrics.sectionGap) {
+                    SettingsSection("Accounts") {
+                        HStack(spacing: 8) {
+                            BulkIconsRow(model: model)
+                            if model.accounts.count > 1 {
+                                Button("Reorder") { reordering = true }
+                                    .help("Drag accounts into the order the menu shows them")
+                            }
                         }
-                    }
-                } content: {
-                    VStack(spacing: 0) {
-                        if model.accounts.isEmpty {
-                            Text("No accounts added yet.")
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                        }
-                        ForEach(Array(model.accounts.enumerated()), id: \.element.identity) { index, account in
-                            if index > 0 { Divider().padding(.leading, SettingsMetrics.cardPadding) }
-                            AccountRowView(account: account, model: model, startEditing: initial.editing == account.identity)
+                    } content: {
+                        VStack(spacing: 0) {
+                            if model.accounts.isEmpty {
+                                Text("No accounts added yet.")
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                            ForEach(Array(model.accounts.enumerated()), id: \.element.identity) { index, account in
+                                if index > 0 { Divider().padding(.leading, SettingsMetrics.cardPadding) }
+                                AccountRowView(
+                                    account: account, model: model,
+                                    startEditing: editRequest == account.identity,
+                                    onStartedEditing: { editRequest = nil }
+                                )
                                 .padding(.horizontal, SettingsMetrics.cardPadding)
+                                .id(account.identity)
+                            }
                         }
+                        // Rows pad themselves vertically, so the dividers run the full height
+                        .settingsCard(padded: false)
                     }
-                    // Rows pad themselves vertically, so the dividers run the full height
-                    .settingsCard(padded: false)
-                }
 
-                SettingsSection("Add Account") {
-                    AddAccountView(model: model, initialTab: initial.addTab, openFilePicker: initial.openFilePicker)
+                    SettingsSection("Add Account") {
+                        AddAccountView(
+                            model: model, onScanned: { editRequest = $0 },
+                            initialTab: initial.addTab, openFilePicker: initial.openFilePicker
+                        )
                         .settingsCard()
-                }
-
-                SettingsSection("General") {
-                    // Aligned on the first baseline, so the button stays level with the
-                    // toggle when the login item's approval hint adds lines below it
-                    HStack(alignment: .firstTextBaseline) {
-                        LoginItemRow(loginItem: loginItem)
-                        ExportRow(model: model, confirming: initial.confirmExport)
                     }
-                    .settingsCard()
+
+                    SettingsSection("General") {
+                        // Aligned on the first baseline, so the button stays level with the
+                        // toggle when the login item's approval hint adds lines below it
+                        HStack(alignment: .firstTextBaseline) {
+                            LoginItemRow(loginItem: loginItem)
+                            ExportRow(model: model, confirming: initial.confirmExport)
+                        }
+                        .settingsCard()
+                    }
+                }
+                .padding(20)
+            }
+            .onChange(of: editRequest) { _, identity in
+                guard let identity else { return }
+                // Next turn: a just-added account's row doesn't exist until this update lays out
+                DispatchQueue.main.async {
+                    withAnimation { scroller.scrollTo(identity, anchor: .center) }
                 }
             }
-            .padding(20)
         }
     }
 
@@ -300,7 +321,7 @@ struct ExportRow: View {
         }
     }
 
-    /// A sheet on the Settings window, like Import's picker. NSSavePanel rather than
+    /// A sheet on the Settings window, like Bulk Import's picker. NSSavePanel rather than
     /// fileExporter so the model writes the file itself, with owner-only permissions.
     ///
     /// The window is the one this row lives in, never `NSApp.keyWindow`: this runs from
