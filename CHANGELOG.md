@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.1.3](https://github.com/iambriansreed/menu-otp/compare/v0.1.2...v0.1.3) (2026-10-05)
+
+
+### Features
+
+* **settings:** add accounts by scanning a QR code on screen ([eb33880](https://github.com/iambriansreed/menu-otp/commit/eb33880d083dc9c5c4e4012b662359ca87ef1b31))
+
 ## [0.1.2](https://github.com/iambriansreed/menu-otp/compare/v0.1.1...v0.1.2) (2026-09-24)
 
 
